@@ -83,7 +83,15 @@ export default function Menu() {
 								}}
 							>
 								<span className="text-2xl">{cat.emoji}</span>
-								{cat.nombre}
+								<span
+									className={
+										categoriaActiva === cat.nombre
+											? "text-gray-800"
+											: "text-pink-600"
+									}
+								>
+									{cat.nombre}
+								</span>
 							</button>
 						))}
 					</div>

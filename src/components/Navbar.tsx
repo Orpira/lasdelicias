@@ -44,17 +44,17 @@ const Navbar: React.FC = () => {
 					aria-label="Abrir menú"
 				>
 					<span
-						className={`block w-6 h-1 bg-gray-800 rounded transition-all duration-300 mb-1 ${
+						className={`block w-6 h-1 bg-pink-600 rounded transition-all duration-300 mb-1 ${
 							menuOpen ? "rotate-45 translate-y-2" : ""
 						}`}
 					></span>
 					<span
-						className={`block w-6 h-1 bg-gray-800 rounded transition-all duration-300 mb-1 ${
+						className={`block w-6 h-1 bg-pink-600 rounded transition-all duration-300 mb-1 ${
 							menuOpen ? "opacity-0" : ""
 						}`}
 					></span>
 					<span
-						className={`block w-6 h-1 bg-gray-800 rounded transition-all duration-300 ${
+						className={`block w-6 h-1 bg-pink-600 rounded transition-all duration-300 ${
 							menuOpen ? "-rotate-45 -translate-y-2" : ""
 						}`}
 					></span>
