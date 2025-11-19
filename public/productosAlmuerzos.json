@@ -1,0 +1,82 @@
+[
+	{
+		"nombre": "Bocadillo de jamón serrano",
+		"descripcion": "Pan rústico con jamón.",
+		"precio": 3.5,
+		"categoria": "Almuerzos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Quiche de espinacas",
+		"descripcion": "Con queso y huevo.",
+		"precio": 3.8,
+		"categoria": "Almuerzos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Tarta salada de pollo",
+		"descripcion": "Receta especial del chef.",
+		"precio": 4.2,
+		"categoria": "Almuerzos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Empanada gallega",
+		"descripcion": "De atún y pimientos.",
+		"precio": 3.0,
+		"categoria": "Almuerzos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Sandwich vegetal",
+		"descripcion": "Con aguacate y tomate.",
+		"precio": 3.5,
+		"categoria": "Almuerzos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Wrap de pollo",
+		"descripcion": "Con salsa ligera.",
+		"precio": 3.9,
+		"categoria": "Almuerzos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Ensalada mediterránea",
+		"descripcion": "Con feta y aceitunas.",
+		"precio": 3.6,
+		"categoria": "Almuerzos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Croquetas caseras",
+		"descripcion": "De jamón ibérico.",
+		"precio": 3.2,
+		"categoria": "Almuerzos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Tortilla de patatas",
+		"descripcion": "Receta tradicional.",
+		"precio": 3.0,
+		"categoria": "Almuerzos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Hamburguesita artesanal",
+		"descripcion": "Carne de ternera y pan brioche.",
+		"precio": 4.5,
+		"categoria": "Almuerzos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	}
+]

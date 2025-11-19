@@ -1,0 +1,91 @@
+[
+	{
+		"nombre": "Croissant de mantequilla",
+		"descripcion": "Crujiente y esponjoso.",
+		"precio": 1.8,
+		"categoria": "Desayunos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+
+	{
+		"nombre": "Napolitana de chocolate",
+		"descripcion": "Hojaldre relleno de chocolate.",
+		"precio": 2.0,
+		"categoria": "Desayunos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Pan tostado con tomate",
+		"descripcion": "Tostada clásica andaluza.",
+		"precio": 1.5,
+		"categoria": "Desayunos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Ensalada de frutas",
+		"descripcion": "Frutas frescas de temporada.",
+		"precio": 2.2,
+		"categoria": "Desayunos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Muffin de arándanos",
+		"descripcion": "Dulce y esponjoso.",
+		"precio": 2.1,
+		"categoria": "Desayunos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Bollito suizo",
+		"descripcion": "Dulce típico del obrador.",
+		"precio": 1.3,
+		"categoria": "Desayunos",
+		"valoracion": 3,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Tostada integral",
+		"descripcion": "Con aceite de oliva.",
+		"precio": 1.6,
+		"categoria": "Desayunos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Bizcocho casero",
+		"descripcion": "Receta tradicional.",
+		"precio": 1.9,
+		"categoria": "Desayunos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Donut glaseado",
+		"descripcion": "Clásico con glaseado dulce.",
+		"precio": 1.7,
+		"categoria": "Desayunos",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Yogur con cereales",
+		"descripcion": "Desayuno saludable.",
+		"precio": 2.0,
+		"categoria": "Desayunos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Tostada con aguacate",
+		"descripcion": "Con un toque de limón.",
+		"precio": 2.5,
+		"categoria": "Desayunos",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	}
+]

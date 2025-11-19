@@ -1,0 +1,82 @@
+[
+	{
+		"nombre": "Café con leche",
+		"descripcion": "Espresso con leche espumada.",
+		"precio": 1.5,
+		"categoria": "Bebidas",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Zumo de naranja natural",
+		"descripcion": "Recién exprimido.",
+		"precio": 2.0,
+		"categoria": "Bebidas",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Té verde",
+		"descripcion": "Con hierbabuena.",
+		"precio": 1.8,
+		"categoria": "Bebidas",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Café americano",
+		"descripcion": "Suave y largo.",
+		"precio": 1.4,
+		"categoria": "Bebidas",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Batido de fresa",
+		"descripcion": "Con leche fresca.",
+		"precio": 2.2,
+		"categoria": "Bebidas",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Café solo",
+		"descripcion": "Espresso intenso.",
+		"precio": 1.3,
+		"categoria": "Bebidas",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Infusión de manzanilla",
+		"descripcion": "Suave y digestiva.",
+		"precio": 1.7,
+		"categoria": "Bebidas",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Limonada casera",
+		"descripcion": "Refrescante y natural.",
+		"precio": 2.1,
+		"categoria": "Bebidas",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Café descafeinado",
+		"descripcion": "Sabor sin cafeína.",
+		"precio": 1.5,
+		"categoria": "Bebidas",
+		"valoracion": 3,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Smoothie tropical",
+		"descripcion": "Frutas exóticas.",
+		"precio": 2.5,
+		"categoria": "Bebidas",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	}
+]

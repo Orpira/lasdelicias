@@ -1,0 +1,82 @@
+[
+	{
+		"nombre": "Cupcake de vainilla",
+		"descripcion": "Con cobertura cremosa.",
+		"precio": 2.2,
+		"categoria": "Pastelería",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Brownie clásico",
+		"descripcion": "Chocolate intenso.",
+		"precio": 2.5,
+		"categoria": "Pastelería",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Tarta de queso",
+		"descripcion": "Base de galleta y mermelada.",
+		"precio": 3.0,
+		"categoria": "Pastelería",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Éclair de café",
+		"descripcion": "Relleno de crema de café.",
+		"precio": 2.8,
+		"categoria": "Pastelería",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Tarta de zanahoria",
+		"descripcion": "Con frosting de queso.",
+		"precio": 3.1,
+		"categoria": "Pastelería",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Pastel de manzana",
+		"descripcion": "Hojaldre con compota.",
+		"precio": 2.7,
+		"categoria": "Pastelería",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Macarons surtidos",
+		"descripcion": "Caja de 5 unidades.",
+		"precio": 4.0,
+		"categoria": "Pastelería",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Mini cheesecake",
+		"descripcion": "Versión individual.",
+		"precio": 2.9,
+		"categoria": "Pastelería",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Milhojas",
+		"descripcion": "Con crema pastelera.",
+		"precio": 3.3,
+		"categoria": "Pastelería",
+		"valoracion": 4,
+		"imagen": "https://via.placeholder.com/100"
+	},
+	{
+		"nombre": "Tarta de chocolate",
+		"descripcion": "Capa de ganache intenso.",
+		"precio": 3.5,
+		"categoria": "Pastelería",
+		"valoracion": 5,
+		"imagen": "https://via.placeholder.com/100"
+	}
+]
