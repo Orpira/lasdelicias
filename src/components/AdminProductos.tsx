@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
 	collection,
@@ -122,7 +122,7 @@ export default function AdminProductos() {
 				...doc.data(),
 			})) as Producto[];
 			setProductos(dataProductos);
-		} catch (err) {
+		} catch {
 			alert("Error al guardar producto");
 		}
 		setLoading(false);

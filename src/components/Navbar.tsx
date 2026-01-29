@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 const navLinks = [
 	{ label: "Inicio", href: "/" },
@@ -6,7 +6,7 @@ const navLinks = [
 	{ label: "Contacto", href: "/contacto" },
 ];
 
-const Navbar: React.FC = () => {
+export default function Navbar() {
 	const [menuOpen, setMenuOpen] = useState(false);
 	return (
 		<nav className="sticky top-0 z-50 w-full bg-gradient-to-r from-white/70 via-white/60 to-white/30 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-900/60 backdrop-blur-md ring-1 ring-slate-900/5 dark:ring-slate-50/10 shadow-md transition-colors font-sans">
@@ -77,6 +77,4 @@ const Navbar: React.FC = () => {
 			)}
 		</nav>
 	);
-};
-
-export default Navbar;
+}

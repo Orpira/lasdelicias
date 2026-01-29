@@ -1,5 +1,3 @@
-import React from "react";
-
 const features = [
 	{
 		title: "Desayunos memorables",
@@ -18,7 +16,7 @@ const features = [
 	},
 ];
 
-const Home: React.FC = () => {
+export default function Home() {
 	return (
 		<main className="font-sans bg-gradient-radial from-yellow-100 via-yellow-300 to-pink-100 text-[#3e2723] min-h-screen">
 			{/* Hero Section */}
@@ -129,6 +127,4 @@ const Home: React.FC = () => {
 			</section>
 		</main>
 	);
-};
-
-export default Home;
+}

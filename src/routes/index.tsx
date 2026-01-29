@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Home from "../pages/Home";
 import Menu from "../components/Menu";
 import Pedido from "../pages/Pedido";
@@ -8,7 +8,7 @@ import "../App.css";
 
 export default function App() {
 	return (
-		<Router>
+		<>
 			<Navbar />
 			<main className="pb-20">
 				<Routes>
@@ -19,6 +19,6 @@ export default function App() {
 				</Routes>
 			</main>
 			<Footer />
-		</Router>
+		</>
 	);
 }
