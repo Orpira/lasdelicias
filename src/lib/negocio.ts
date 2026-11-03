@@ -12,6 +12,7 @@ export interface Negocio {
 	whatsapp: string;
 	instagram: string;
 	servicios: string[];
+	resenas_externas?: { sitio: string; url: string }[];
 	horario: Record<"lunes" | "martes" | "miercoles" | "jueves" | "viernes" | "sabado" | "domingo", string | null>;
 }
 

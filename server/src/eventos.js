@@ -72,6 +72,9 @@ async function procesar(aviso, log) {
 			enviarSSE(raw, "pedido", vistaPublica(pedido));
 		}
 		await enviarAN8n({ tipo: aviso.tipo, estado_anterior: aviso.estado_anterior, pedido }, log);
+	} else if (aviso.tipo === "opinion.nueva") {
+		for (const raw of clientesPanel) enviarSSE(raw, "opinion", aviso);
+		await enviarAN8n(aviso, log);
 	} else if (aviso.tipo.startsWith("stock.")) {
 		for (const raw of clientesPanel) enviarSSE(raw, "stock", aviso);
 		await enviarAN8n(aviso, log);

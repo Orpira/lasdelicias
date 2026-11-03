@@ -127,6 +127,10 @@ Cabecera `X-Api-Key: <N8N_API_KEY>`:
 | GET | `/n8n/pedidos/:codigo` | Consultar un pedido |
 | PATCH | `/n8n/pedidos/:id` | Cambiar estado: `{ "estado": "listo" }` |
 
+### Opiniones
+
+Cada opinión nueva llega a n8n como `opinion.nueva` (`{ id, nombre, puntuacion, comentario, verificada }`): útil para avisar al dueño de que hay una por revisar. Se publican desde el panel → **⭐ Opiniones**. El enlace a Páginas Amarillas está en la ficha del negocio (`resenas_externas`).
+
 ### Avisos de stock
 
 Además de los pedidos, la API envía a n8n `stock.bajo` y `stock.agotado` (`{ id, nombre, stock, stock_minimo }`) cuando un producto envasado cruza su mínimo. Ideal para un mensaje al dueño: "Quedan 5 refrescos".

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Etiqueta from "../components/Etiqueta";
 import IconoMarca from "../components/IconoMarca";
+import SeccionOpiniones from "../components/SeccionOpiniones";
 import { useCarrito } from "../lib/carrito";
 import { DIAS, enlaceMapa, estadoHoy, telefonoLegible, useNegocio } from "../lib/negocio";
 import { useProductos } from "../lib/productos";
@@ -167,6 +168,8 @@ export default function Home() {
 					</div>
 				</div>
 			</section>
+
+			<SeccionOpiniones resenasExternas={negocio?.resenas_externas ?? []} />
 
 			{/* Visítanos */}
 			<section className="border-t border-delicias/10">

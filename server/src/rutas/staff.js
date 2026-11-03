@@ -9,6 +9,7 @@ import { query } from "../db.js";
 import { config } from "../config.js";
 import {
 	esquemaEstado,
+	esquemaEstadoOpinion,
 	esquemaLogin,
 	esquemaMesaCambio,
 	esquemaMesaNueva,
@@ -178,6 +179,28 @@ export default async function rutasStaff(app) {
 				);
 				if (!rows[0]) return reply.code(404).send({ error: "Mesa no encontrada" });
 				return { ...rows[0], pedidos_en_curso: 0 };
+			});
+
+			// Moderación de opiniones
+			admin.get("/admin/opiniones", async (request) => {
+				const estado = ["pendiente", "publicada", "oculta"].includes(request.query.estado) ? request.query.estado : "pendiente";
+				const { rows } = await query(
+					`SELECT id, nombre, puntuacion, comentario, verificada, estado, pedido_codigo, created_at
+					 FROM opiniones WHERE estado = $1 ORDER BY created_at DESC LIMIT 200`,
+					[estado],
+				);
+				const { rows: cuentas } = await query("SELECT estado, count(*)::int AS n FROM opiniones GROUP BY estado");
+				return { opiniones: rows, cuentas: Object.fromEntries(cuentas.map((c) => [c.estado, c.n])) };
+			});
+
+			admin.patch("/admin/opiniones/:id", async (request, reply) => {
+				const { estado } = validar(esquemaEstadoOpinion, request.body);
+				const { rows } = await query(
+					"UPDATE opiniones SET estado = $2, revisada_at = now() WHERE id = $1 RETURNING id, estado",
+					[Number(request.params.id), estado],
+				);
+				if (!rows[0]) return reply.code(404).send({ error: "Opinión no encontrada" });
+				return rows[0];
 			});
 
 			admin.put("/admin/negocio", async (request) => {
