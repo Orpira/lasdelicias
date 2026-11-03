@@ -108,6 +108,18 @@ export const esquemaNegocio = z.object({
 	}),
 });
 
+export const esquemaMesaNueva = z.object({
+	numero: z.number().int().min(1).max(999).optional(),
+	nombre: z.string().trim().max(40).optional(),
+});
+
+export const esquemaMesaCambio = z
+	.object({
+		nombre: z.string().trim().min(1, "El nombre no puede estar vacío").max(40).optional(),
+		activa: z.boolean().optional(),
+	})
+	.refine((c) => c.nombre !== undefined || c.activa !== undefined, "No hay cambios");
+
 export const esquemaLlamada = z.object({ motivo: z.enum(["atencion", "cuenta"]).default("atencion") });
 
 export const esquemaDispositivo = z.object({ dispositivo: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/) });
