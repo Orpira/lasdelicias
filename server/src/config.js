@@ -9,16 +9,29 @@ function requerida(nombre) {
 	return valor;
 }
 
+/** "https://app-*.vercel.app" → RegExp; un origen sin "*" se deja como texto exacto. */
+export function origenConComodin(origen) {
+	if (!origen.includes("*")) return origen;
+	const patron = origen
+		.split("*")
+		.map((trozo) => trozo.replace(/[.+?^${}()|[\]\\/]/g, "\\$&"))
+		.join("[a-z0-9-]+");
+	return new RegExp(`^${patron}$`, "i");
+}
+
 export const config = {
 	puerto: Number(process.env.PORT ?? 3001),
 	host: process.env.HOST ?? "0.0.0.0",
 	databaseUrl: requerida("DATABASE_URL"),
 	jwtSecret: requerida("JWT_SECRET"),
-	// Orígenes del frontend permitidos (separados por comas)
+	// Orígenes del frontend permitidos (separados por comas). Admite "*" como comodín
+	// dentro de un nombre de dominio, p. ej. https://lasdelicias-*-orpira-7163s-projects.vercel.app
+	// para cubrir las URLs que Vercel genera en cada despliegue.
 	corsOrigenes: (process.env.CORS_ORIGINS ?? "http://localhost:5173")
 		.split(",")
-		.map((o) => o.trim())
-		.filter(Boolean),
+		.map((o) => o.trim().replace(/\/$/, ""))
+		.filter(Boolean)
+		.map(origenConComodin),
 	// URL pública de la API, para construir las URLs de las imágenes subidas
 	urlPublica: (process.env.PUBLIC_URL ?? "http://localhost:3001").replace(/\/$/, ""),
 	uploadsDir: process.env.UPLOADS_DIR ?? "./uploads",

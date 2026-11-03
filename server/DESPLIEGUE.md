@@ -69,7 +69,7 @@ nano .env
 Rellena (genera cada secreto con `openssl rand -base64 32`):
 
 - `POSTGRES_PASSWORD`, `JWT_SECRET`, `N8N_WEBHOOK_SECRET`, `N8N_API_KEY`
-- `CORS_ORIGINS`: los dominios del frontend en Vercel, separados por comas (`https://lasdelicias.vercel.app,https://delicias.orpira.es`)
+- `CORS_ORIGINS`: los dominios del frontend, separados por comas. Admite `*` para las URLs que Vercel genera en cada despliegue: `https://lasdelicias.vercel.app,https://lasdelicias-orpira-7163s-projects.vercel.app,https://lasdelicias-*-orpira-7163s-projects.vercel.app`
 - `PUBLIC_URL=https://api-delicias.orpira.es`
 - `N8N_WEBHOOK_URL`: la URL del webhook que crearás en n8n (paso 5). Si n8n está en Docker en este servidor, puedes usar la red interna (ver comentario en `docker-compose.yml`).
 
