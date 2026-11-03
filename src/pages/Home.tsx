@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import IconoMarca from "../components/IconoMarca";
 import SeccionOpiniones from "../components/SeccionOpiniones";
@@ -16,6 +18,37 @@ export default function Home() {
 	const negocio = useNegocio();
 	const { productos } = useProductos();
 	const carrito = useCarrito();
+	const vitrinaRef = useRef<HTMLDivElement>(null);
+	const [desplazamiento, setDesplazamiento] = useState({ anterior: false, siguiente: false });
+
+	useEffect(() => {
+		const contenedor = vitrinaRef.current;
+		if (!contenedor) return;
+		const actualizar = () => {
+			setDesplazamiento({
+				anterior: contenedor.scrollLeft > 1,
+				siguiente: contenedor.scrollLeft + contenedor.clientWidth < contenedor.scrollWidth - 1,
+			});
+		};
+		const observador = new ResizeObserver(actualizar);
+		observador.observe(contenedor);
+		contenedor.addEventListener("scroll", actualizar, { passive: true });
+		return () => {
+			observador.disconnect();
+			contenedor.removeEventListener("scroll", actualizar);
+		};
+	}, [productos]);
+
+	function desplazarVitrina(direccion: -1 | 1) {
+		const contenedor = vitrinaRef.current;
+		const tarjeta = contenedor?.firstElementChild;
+		if (!contenedor || !tarjeta) return;
+		const paso = tarjeta.getBoundingClientRect().width + parseFloat(getComputedStyle(contenedor).columnGap);
+		contenedor.scrollBy({
+			left: direccion * paso,
+			behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+		});
+	}
 
 	const estado = negocio ? estadoHoy(negocio.horario) : null;
 	const vitrina = (productos ?? []).filter((p) => p.disponible && p.imagen_url && p.categoria === "Pastelería");
@@ -60,40 +93,53 @@ export default function Home() {
 			</section>
 
 			{/* Hoy en la vitrina: productos reales con su precio */}
-			<section className="max-w-6xl mx-auto px-5 pt-16 pb-12">
+			<section aria-labelledby="titulo-vitrina" aria-roledescription="carrusel" className="max-w-6xl mx-auto px-5 pt-16 pb-12">
 				<div className="flex items-end justify-between gap-4 mb-6">
 					<div>
-						<h2 className="text-3xl sm:text-4xl font-extrabold tracking-titular">Hoy en la vitrina</h2>
+						<h2 id="titulo-vitrina" className="text-3xl sm:text-4xl font-extrabold tracking-titular">Hoy en la vitrina</h2>
 						<p className="text-tinta/70 mt-1">Hecho en nuestro obrador. Añádelo y lo tendrás listo al llegar.</p>
 					</div>
 					<Link to="/menu?categoria=Pastelería" className="hidden sm:inline font-bold text-delicias hover:text-delicias-profundo whitespace-nowrap">
 						Toda la pastelería
 					</Link>
 				</div>
-				<div className="flex gap-5 overflow-x-auto sin-scrollbar snap-x pb-4 -mx-5 px-5">
-					{productos === null &&
-						Array.from({ length: 4 }, (_, i) => <div key={i} className="shrink-0 w-56 h-72 rounded-2xl bg-merengue animate-pulse" />)}
-					{vitrina.map((p) => {
-						const cantidad = carrito.cantidadDe(p.id);
-						return (
-							<article key={p.id} className="snap-start shrink-0 w-56">
-								<div className="relative">
-									<img src={p.imagen_url} alt={p.nombre} loading="lazy" className="w-56 h-56 object-cover rounded-2xl" />
-									<button
-										onClick={() => carrito.cambiar(p, 1)}
-										aria-label={`Añadir ${p.nombre}`}
-										className="absolute bottom-3 right-3 h-11 min-w-11 px-3 rounded-full bg-white text-delicias font-extrabold text-lg shadow-md hover:bg-merengue">
-										{cantidad > 0 ? `${cantidad} en tu pedido` : "+"}
-									</button>
-								</div>
-								<div className="mt-3 flex items-baseline justify-between gap-3">
-									<h3 className="font-bold leading-snug">{p.nombre}</h3>
-									<span className="font-bold text-delicias tabular-nums whitespace-nowrap">{euros(p.precio)}</span>
-								</div>
-								<p className="text-sm text-tinta/65 leading-snug">{p.descripcion}</p>
-							</article>
-						);
-					})}
+				<div className="relative px-6 sm:px-7">
+					<button type="button" onClick={() => desplazarVitrina(-1)}
+						aria-label="Ver productos anteriores" aria-controls="carrusel-vitrina" disabled={!desplazamiento.anterior}
+						className="absolute left-0 top-28 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-delicias/20 bg-white text-delicias shadow-md transition-colors hover:bg-merengue disabled:opacity-40 disabled:cursor-not-allowed">
+						<ChevronLeft className="h-6 w-6" aria-hidden="true" />
+					</button>
+					<div ref={vitrinaRef} id="carrusel-vitrina" tabIndex={0} role="group" aria-label="Productos de pastelería"
+						className="flex gap-5 overflow-x-auto overscroll-x-contain sin-scrollbar snap-x snap-mandatory pb-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-delicias focus-visible:outline-offset-2">
+						{productos === null &&
+							Array.from({ length: 4 }, (_, i) => <div key={i} className="shrink-0 w-56 max-w-full h-72 rounded-2xl bg-merengue animate-pulse" />)}
+						{vitrina.map((p) => {
+							const cantidad = carrito.cantidadDe(p.id);
+							return (
+								<article key={p.id} className="snap-start shrink-0 w-56 max-w-full">
+									<div className="relative">
+										<img src={p.imagen_url} alt={p.nombre} loading="lazy" className="w-full aspect-square object-cover rounded-2xl" />
+										<button
+											onClick={() => carrito.cambiar(p, 1)}
+											aria-label={`Añadir ${p.nombre}`}
+											className="absolute bottom-3 right-3 h-11 min-w-11 px-3 rounded-full bg-white text-delicias font-extrabold text-lg shadow-md hover:bg-merengue">
+											{cantidad > 0 ? `${cantidad} en tu pedido` : "+"}
+										</button>
+									</div>
+									<div className="mt-3 flex items-baseline justify-between gap-3">
+										<h3 className="font-bold leading-snug">{p.nombre}</h3>
+										<span className="font-bold text-delicias tabular-nums whitespace-nowrap">{euros(p.precio)}</span>
+									</div>
+									<p className="text-sm text-tinta/65 leading-snug">{p.descripcion}</p>
+								</article>
+							);
+						})}
+					</div>
+					<button type="button" onClick={() => desplazarVitrina(1)}
+						aria-label="Ver productos siguientes" aria-controls="carrusel-vitrina" disabled={!desplazamiento.siguiente}
+						className="absolute right-0 top-28 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-delicias/20 bg-white text-delicias shadow-md transition-colors hover:bg-merengue disabled:opacity-40 disabled:cursor-not-allowed">
+						<ChevronRight className="h-6 w-6" aria-hidden="true" />
+					</button>
 				</div>
 			</section>
 

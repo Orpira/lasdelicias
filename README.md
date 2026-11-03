@@ -43,6 +43,19 @@ npm run dev
 - **Backend en el servidor**: un comando con `server/deploy/instalar.sh`; detalles en [server/DESPLIEGUE.md](server/DESPLIEGUE.md).
 - **Frontend en Vercel**: importar el repo, framework Vite, variable `VITE_API_URL=https://api-delicias.orpira.es`. `vercel.json` ya resuelve las rutas del SPA.
 
+## Favicon e iconos móviles
+
+El favicon y los iconos de inicio usan el logo original de `public/logo.webp`, centrado sobre su fondo granate y sin recortes. `index.html` enlaza el favicon ICO/PNG, el icono de Apple de 180 × 180 y `public/site.webmanifest`, que declara los iconos Android de 192 y 512 píxeles y una variante adaptable con margen seguro.
+
+- **iPhone/iPad (Safari)**: Compartir → Añadir a pantalla de inicio.
+- **Android (Chrome)**: menú → Añadir a pantalla de inicio o Instalar aplicación, según el navegador.
+
+Estos iconos no añaden funcionamiento sin conexión.
+
+## Vitrina de la portada
+
+«Hoy en la vitrina» muestra la pastelería disponible en un carrusel horizontal con flechas laterales y desplazamiento táctil. Las flechas avanzan una tarjeta y se desactivan en los extremos o cuando todos los productos caben. El desplazamiento respeta la preferencia de movimiento reducido y mantiene los botones para añadir productos al pedido.
+
 ## Contenido de demo
 
 Las fotos de `public/demo/` salen de la ficha pública del negocio y de su Instagram ([@pc_lasdelicias2019](https://instagram.com/pc_lasdelicias2019)). Los **precios son orientativos** salvo las palmeras rellenas (2,60 €, cartel de la vitrina) y la natilla con buñuelos (5 €, publicación de Instagram). Confirmar carta, precios y horario con el negocio antes de abrirlo al público; todo se edita desde `/admin`.
