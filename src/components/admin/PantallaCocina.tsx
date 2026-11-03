@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { hora } from "../../lib/api";
 import { minutosDesde, porLlegada, useAhora, usePantallaEncendida, usePedidosEnVivo } from "../../lib/pedidosEnVivo";
 import type { Categoria, LineaPedido, Pedido } from "../../types/producto";
+import { etiquetaMesa } from "../../lib/mesa";
 
 type Puesto = "todo" | "cocina" | "barra" | "pasteleria";
 
@@ -146,7 +147,7 @@ export default function PantallaCocina({ alCaducar }: { alCaducar: () => void })
 									<span className="text-lg font-bold tabular-nums">{min}′</span>
 								</header>
 								<div className="px-3 py-2 border-b text-lg font-bold">
-									{pedido.tipo === "mesa" && `🪑 Mesa ${pedido.mesa_numero}`}
+									{pedido.tipo === "mesa" && pedido.mesa_numero !== null && `🪑 ${etiquetaMesa(pedido.mesa_numero, pedido.mesa_nombre, { conNumero: true })}`}
 									{pedido.tipo === "recoger" && `🛍️ Llevar${pedido.hora_recogida ? ` · ${hora(pedido.hora_recogida)}` : ""}`}
 									{pedido.tipo === "whatsapp" && `💬 WhatsApp${pedido.hora_recogida ? ` · ${hora(pedido.hora_recogida)}` : ""}`}
 									<span className="block text-sm font-normal text-gray-500">{pedido.nombre_cliente} · llegó {hora(pedido.created_at)}</span>

@@ -2,6 +2,7 @@
 import { euros, hora } from "../../lib/api";
 import { minutosDesde, porLlegada, useAhora, usePantallaEncendida, usePedidosEnVivo } from "../../lib/pedidosEnVivo";
 import type { EstadoPedido } from "../../types/producto";
+import { etiquetaMesa } from "../../lib/mesa";
 
 const COLUMNAS: { estado: EstadoPedido; titulo: string; color: string }[] = [
 	{ estado: "nuevo", titulo: "Nuevos", color: "border-delicias" },
@@ -49,7 +50,7 @@ export default function PanelPedidos({ alCaducar }: { alCaducar: () => void }) {
 					{llamadas.map((l) => (
 						<button key={l.id} onClick={() => atender(l)}
 							className="animate-pulse px-5 py-3 rounded-xl bg-amber-400 text-amber-950 font-bold shadow">
-							{l.motivo === "cuenta" ? "🧾" : "🙋"} Mesa {l.mesa_numero} · {l.motivo === "cuenta" ? "pide la cuenta" : "llama"} · {hora(l.created_at)} — atendida ✓
+							{l.motivo === "cuenta" ? "🧾" : "🙋"} {etiquetaMesa(l.mesa_numero, l.mesa_nombre, { conNumero: true })} · {l.motivo === "cuenta" ? "pide la cuenta" : "llama"} · {hora(l.created_at)} — atendida ✓
 						</button>
 					))}
 				</div>
@@ -67,6 +68,8 @@ export default function PanelPedidos({ alCaducar }: { alCaducar: () => void }) {
 								{lista.map((p) => {
 									const min = minutosDesde(p.created_at, ahora);
 									const siguiente = SIGUIENTE[p.estado];
+									const etiquetaActual = p.mesa_numero !== null ? etiquetaMesa(p.mesa_numero, p.mesa_nombre, { conNumero: true }) : null;
+									const etiquetaAnterior = p.mesa_anterior !== null ? etiquetaMesa(p.mesa_anterior, null, { conNumero: true }) : null;
 									return (
 										<article key={p.id} className={`bg-white rounded-xl shadow border-l-8 ${col.color} p-4`}>
 											<div className="flex items-start justify-between gap-2">
@@ -77,7 +80,7 @@ export default function PanelPedidos({ alCaducar }: { alCaducar: () => void }) {
 												</div>
 											</div>
 											<p className="font-semibold mt-1">
-												{p.tipo === "mesa" && <span className="px-2 py-0.5 rounded bg-delicias-claro text-delicias mr-2">🪑 Mesa {p.mesa_numero}</span>}
+												{p.tipo === "mesa" && etiquetaActual && <span className="px-2 py-0.5 rounded bg-delicias-claro text-delicias mr-2">🪑 {etiquetaActual}</span>}
 												{p.tipo === "recoger" && <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 mr-2">🛍️ {p.hora_recogida ? `Recoge ${hora(p.hora_recogida)}` : "Para llevar"}</span>}
 												{p.tipo === "whatsapp" && <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 mr-2">💬 WhatsApp{p.hora_recogida ? ` · ${hora(p.hora_recogida)}` : ""}</span>}
 												{p.nombre_cliente}
@@ -87,11 +90,11 @@ export default function PanelPedidos({ alCaducar }: { alCaducar: () => void }) {
 													<li key={i}><b>{it.cantidad}×</b> {it.nombre}</li>
 												))}
 											</ul>
-											{p.mesa_anterior && (
+											{etiquetaAnterior && etiquetaActual && (
 												<p className={`mt-2 p-2 rounded text-sm font-bold ${p.cambio_mesa === "detectado" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-900"}`}>
 													{p.cambio_mesa === "detectado"
-														? `⚠ Este móvil tiene otro pedido en la mesa ${p.mesa_anterior}. Confirma la mesa antes de servir.`
-														: `🔄 Se cambió de la mesa ${p.mesa_anterior} a la ${p.mesa_numero}`}
+														? `⚠ Este móvil tiene otro pedido en ${etiquetaAnterior}. Confirma ${etiquetaActual} antes de servir.`
+														: `🔄 Se cambió de ${etiquetaAnterior} a ${etiquetaActual}`}
 												</p>
 											)}
 											{p.notas && <p className="mt-2 p-2 rounded bg-yellow-50 text-sm">📝 {p.notas}</p>}

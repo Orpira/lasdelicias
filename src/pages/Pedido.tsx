@@ -6,6 +6,7 @@ import type { Pedido as TPedido } from "../types/producto";
 import { ShoppingBag } from "lucide-react";
 import { ErrorApi } from "../lib/api";
 import { idDispositivo } from "../lib/dispositivo";
+import { etiquetaMesa } from "../lib/mesa";
 
 const CLAVE_MIS_PEDIDOS = "delicias.misPedidos";
 
@@ -132,7 +133,7 @@ export default function Pedido() {
 					<div className="grid grid-cols-2 gap-2">
 						<button type="button" onClick={() => setTipo("mesa")}
 							className={`py-3 rounded-xl font-semibold border-2 ${tipo === "mesa" ? "border-delicias bg-delicias-claro text-delicias" : "border-gray-200"}`}>
-							Tomar en la mesa {carrito.mesa}
+							Tomar en {etiquetaMesa(carrito.mesa, carrito.mesaNombre)}
 						</button>
 						<button type="button" onClick={() => setTipo("recoger")}
 							className={`py-3 rounded-xl font-semibold border-2 ${tipo === "recoger" ? "border-delicias bg-delicias-claro text-delicias" : "border-gray-200"}`}>

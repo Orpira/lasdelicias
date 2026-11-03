@@ -80,7 +80,10 @@ async function procesar(aviso, log) {
 		await enviarAN8n(aviso, log);
 	} else if (aviso.tipo === "mesa.llamada" || aviso.tipo === "mesa.atendida") {
 		const { rows } = await query(
-			"SELECT id, mesa_numero, motivo, atendida, created_at FROM llamadas_mesa WHERE id = $1",
+			`SELECT l.id, l.mesa_numero, m.nombre AS mesa_nombre, l.motivo, l.atendida, l.created_at
+			 FROM llamadas_mesa l
+			 LEFT JOIN mesas m ON m.numero = l.mesa_numero
+			 WHERE l.id = $1`,
 			[aviso.id],
 		);
 		const llamada = rows[0];

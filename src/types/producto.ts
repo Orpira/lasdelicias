@@ -48,6 +48,7 @@ export interface Pedido {
 	nombre_cliente: string;
 	tipo: "mesa" | "recoger" | "whatsapp";
 	mesa_numero: number | null;
+	mesa_nombre?: string | null;
 	mesa_anterior: number | null;
 	cambio_mesa: "declarado" | "detectado" | null;
 	hora_recogida: string | null;
@@ -62,6 +63,7 @@ export interface Pedido {
 export interface LlamadaMesa {
 	id: string;
 	mesa_numero: number;
+	mesa_nombre?: string | null;
 	motivo: "atencion" | "cuenta";
 	atendida: boolean;
 	created_at: string;

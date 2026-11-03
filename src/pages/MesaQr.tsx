@@ -7,11 +7,12 @@ import { Armchair, ArrowLeftRight } from "lucide-react";
 import { api } from "../lib/api";
 import { useCarrito } from "../lib/carrito";
 import { idDispositivo } from "../lib/dispositivo";
+import { etiquetaMesa } from "../lib/mesa";
 
 interface RespuestaMesa {
 	numero: number;
 	nombre: string;
-	pedidos_en_otra_mesa: { codigo: string; numero_dia: number; mesa_numero: number }[];
+	pedidos_en_otra_mesa: { codigo: string; numero_dia: number; mesa_numero: number; mesa_nombre?: string | null }[];
 }
 
 export default function MesaQr() {
@@ -26,7 +27,7 @@ export default function MesaQr() {
 		api<RespuestaMesa>(`/mesas/qr/${encodeURIComponent(token)}?dispositivo=${idDispositivo()}`)
 			.then((m) => {
 				setMesa(m);
-				fijarMesa({ numero: m.numero, token });
+				fijarMesa({ numero: m.numero, token, nombre: m.nombre });
 				setEstado(m.pedidos_en_otra_mesa.length > 0 ? "preguntar" : "listo");
 			})
 			.catch((e) => {
@@ -63,24 +64,25 @@ export default function MesaQr() {
 	}
 
 	const previos = mesa!.pedidos_en_otra_mesa;
-	const mesaAnterior = previos[0].mesa_numero;
+	const etiquetaActual = etiquetaMesa(mesa!.numero, mesa!.nombre);
+	const etiquetaAnterior = etiquetaMesa(previos[0].mesa_numero, previos[0].mesa_nombre);
 	return (
 		<div className="max-w-md mx-auto py-16 px-4 text-center text-tinta">
 			<ArrowLeftRight className="w-12 h-12 mx-auto mb-4 text-delicias" aria-hidden="true" />
-			<h1 className="text-3xl font-extrabold tracking-titular mb-3">¿Te has cambiado a la mesa {mesa!.numero}?</h1>
+			<h1 className="text-3xl font-extrabold tracking-titular mb-3">¿Te has cambiado a {etiquetaActual}?</h1>
 			<p className="text-gray-600 mb-8">
 				Tienes {previos.length === 1 ? "un pedido en curso" : `${previos.length} pedidos en curso`} (
-				{previos.map((p) => `#${p.numero_dia}`).join(", ")}) en la <b>mesa {mesaAnterior}</b>.
+				{previos.map((p) => `#${p.numero_dia}`).join(", ")}) en <b>{etiquetaAnterior}</b>.
 			</p>
 			{error && <p className="text-red-600 mb-4" role="alert">{error}</p>}
 			<div className="flex flex-col gap-3">
 				<button onClick={confirmarCambio} disabled={enviando}
 					className="py-4 rounded-xl bg-delicias text-white font-bold text-lg hover:bg-delicias-oscuro disabled:opacity-60">
-					Sí, llevadlo a la mesa {mesa!.numero}
+					Sí, llevadlo a {etiquetaActual}
 				</button>
 				<button onClick={() => setEstado("listo")}
 					className="py-4 rounded-xl bg-white border-2 border-gray-200 font-semibold">
-					No, sigue en la mesa {mesaAnterior}
+					No, sigue en {etiquetaAnterior}
 				</button>
 			</div>
 			<p className="text-xs text-gray-500 mt-6">Avisaremos al personal para que no haya confusiones con la entrega.</p>

@@ -43,6 +43,14 @@ npm run dev
 - **Backend en el servidor**: un comando con `server/deploy/instalar.sh`; detalles en [server/DESPLIEGUE.md](server/DESPLIEGUE.md).
 - **Frontend en Vercel**: importar el repo, framework Vite, variable `VITE_API_URL=https://api-delicias.orpira.es`. `vercel.json` ya resuelve las rutas del SPA.
 
+## Nombres de mesa
+
+El nombre se edita en el panel de QR de mesas. Los clientes ven «Mesa 7» si conserva el nombre por defecto, o solo el nombre personalizado, como «Terraza 2». El personal ve «Terraza 2 (mesa 7)» en los pedidos, llamadas, avisos de cambio, cocina y gestión de QR.
+
+Las etiquetas se centralizan en `src/lib/mesa.ts`. El QR guarda también el nombre en el carrito; los carritos antiguos sin nombre siguen funcionando y muestran «Mesa N». Los pedidos y llamadas de la API incluyen `mesa_nombre`, también en los eventos SSE y de n8n, sin migraciones ni cambios de esquema.
+
+Pruebas de las etiquetas: `node --experimental-strip-types --test src/lib/mesa.test.js`.
+
 ## Favicon e iconos móviles
 
 El favicon y los iconos de inicio usan el logo original de `public/logo.webp`, centrado sobre su fondo granate y sin recortes. `index.html` enlaza el favicon ICO/PNG, el icono de Apple de 180 × 180 y `public/site.webmanifest`, que declara los iconos Android de 192 y 512 píxeles y una variante adaptable con margen seguro.

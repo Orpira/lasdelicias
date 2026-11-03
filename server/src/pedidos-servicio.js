@@ -4,23 +4,24 @@ import { config } from "./config.js";
 
 const SELECT_PEDIDO = `
 	SELECT p.id, p.codigo, p.fecha::text AS fecha, p.numero_dia, p.nombre_cliente, p.telefono,
-	       p.tipo, p.mesa_numero, p.mesa_anterior, p.cambio_mesa, p.hora_recogida, p.notas, p.estado, p.total,
+	       p.tipo, p.mesa_numero, m.nombre AS mesa_nombre, p.mesa_anterior, p.cambio_mesa, p.hora_recogida, p.notas, p.estado, p.total,
 	       p.created_at, p.updated_at,
 	       COALESCE(json_agg(json_build_object(
 	           'producto_id', i.producto_id, 'nombre', i.nombre, 'categoria', pr.categoria,
 	           'precio_unitario', i.precio_unitario, 'cantidad', i.cantidad
 	       ) ORDER BY i.id) FILTER (WHERE i.id IS NOT NULL), '[]') AS items
 	FROM pedidos p
+	LEFT JOIN mesas m ON m.numero = p.mesa_numero
 	LEFT JOIN pedido_items i ON i.pedido_id = p.id
 	LEFT JOIN productos pr ON pr.id = i.producto_id`;
 
 export async function obtenerPedidoPorId(id) {
-	const { rows } = await query(`${SELECT_PEDIDO} WHERE p.id = $1 GROUP BY p.id`, [id]);
+	const { rows } = await query(`${SELECT_PEDIDO} WHERE p.id = $1 GROUP BY p.id, m.nombre`, [id]);
 	return rows[0] ?? null;
 }
 
 export async function obtenerPedidoPorCodigo(codigo) {
-	const { rows } = await query(`${SELECT_PEDIDO} WHERE p.codigo = $1 GROUP BY p.id`, [codigo]);
+	const { rows } = await query(`${SELECT_PEDIDO} WHERE p.codigo = $1 GROUP BY p.id, m.nombre`, [codigo]);
 	return rows[0] ?? null;
 }
 
@@ -30,7 +31,7 @@ export async function pedidosDelPanel() {
 		`${SELECT_PEDIDO}
 		 WHERE p.fecha >= (now() AT TIME ZONE $1)::date - 1
 		   AND (p.estado IN ('nuevo','preparando','listo') OR p.updated_at > now() - interval '2 hours')
-		 GROUP BY p.id
+		 GROUP BY p.id, m.nombre
 		 ORDER BY p.created_at`,
 		[config.zonaHoraria],
 	);
@@ -199,11 +200,13 @@ export async function cambiarEstado(id, estado) {
 export async function pedidosEnOtraMesa(dispositivo, mesa) {
 	if (!dispositivo) return [];
 	const { rows } = await query(
-		`SELECT codigo, numero_dia, mesa_numero FROM pedidos
-		 WHERE dispositivo = $1 AND tipo = 'mesa' AND mesa_numero <> $2
-		   AND estado IN ('nuevo','preparando','listo')
-		   AND fecha = (now() AT TIME ZONE $3)::date
-		 ORDER BY created_at`,
+		`SELECT p.codigo, p.numero_dia, p.mesa_numero, m.nombre AS mesa_nombre
+		 FROM pedidos p
+		 LEFT JOIN mesas m ON m.numero = p.mesa_numero
+		 WHERE p.dispositivo = $1 AND p.tipo = 'mesa' AND p.mesa_numero <> $2
+		   AND p.estado IN ('nuevo','preparando','listo')
+		   AND p.fecha = (now() AT TIME ZONE $3)::date
+		 ORDER BY p.created_at`,
 		[dispositivo, mesa, config.zonaHoraria],
 	);
 	return rows;

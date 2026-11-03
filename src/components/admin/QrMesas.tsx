@@ -4,6 +4,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import { api } from "../../lib/api";
+import { etiquetaMesa } from "../../lib/mesa";
 
 interface Mesa {
 	numero: number;
@@ -19,8 +20,6 @@ async function conQr(m: Mesa): Promise<MesaConQr> {
 	const qr = m.activa ? await QRCode.toDataURL(url, { width: 480, margin: 1, color: { dark: "#9E0034" } }) : "";
 	return { ...m, url, qr };
 }
-
-const nombrePorDefecto = (m: Mesa) => m.nombre === `Mesa ${m.numero}`;
 
 export default function QrMesas({ esAdmin }: { esAdmin: boolean }) {
 	const [mesas, setMesas] = useState<MesaConQr[]>([]);
@@ -62,24 +61,26 @@ export default function QrMesas({ esAdmin }: { esAdmin: boolean }) {
 	}
 
 	function renombrar(m: Mesa) {
-		const nombre = window.prompt(`Nombre para la mesa ${m.numero} (p. ej. "Terraza 2"):`, m.nombre)?.trim();
+		const nombre = window.prompt(`Nombre para ${etiquetaMesa(m.numero, m.nombre, { conNumero: true })} (p. ej. "Terraza 2"):`, m.nombre)?.trim();
 		if (!nombre || nombre === m.nombre) return;
 		accion(() => api(`/admin/mesas/${m.numero}`, { metodo: "PATCH", cuerpo: { nombre }, auth: true }), "Nombre actualizado.");
 	}
 
 	function cambiarActiva(m: Mesa, activa: boolean) {
-		if (!activa && !window.confirm(`¿Desactivar ${m.nombre}? Su QR dejará de funcionar hasta que la reactives.`)) return;
+		const etiqueta = etiquetaMesa(m.numero, m.nombre, { conNumero: true });
+		if (!activa && !window.confirm(`¿Desactivar ${etiqueta}? Su QR dejará de funcionar hasta que la reactives.`)) return;
 		accion(
 			() => api(`/admin/mesas/${m.numero}`, { metodo: "PATCH", cuerpo: { activa }, auth: true }),
-			activa ? `${m.nombre} reactivada: su QR anterior vuelve a funcionar.` : `${m.nombre} desactivada.`,
+			activa ? `${etiqueta} reactivada: su QR anterior vuelve a funcionar.` : `${etiqueta} desactivada.`,
 		);
 	}
 
 	function regenerar(m: Mesa) {
-		if (!window.confirm(`¿Generar un QR nuevo para ${m.nombre}? El QR impreso actual dejará de funcionar y habrá que imprimir el nuevo.`)) return;
+		const etiqueta = etiquetaMesa(m.numero, m.nombre, { conNumero: true });
+		if (!window.confirm(`¿Generar un QR nuevo para ${etiqueta}? El QR impreso actual dejará de funcionar y habrá que imprimir el nuevo.`)) return;
 		accion(
 			() => api(`/admin/mesas/${m.numero}/regenerar`, { metodo: "POST", auth: true }),
-			`${m.nombre}: QR nuevo listo. Imprímelo y sustituye el anterior.`,
+			`${etiqueta}: QR nuevo listo. Imprímelo y sustituye el anterior.`,
 		);
 	}
 
@@ -90,7 +91,7 @@ export default function QrMesas({ esAdmin }: { esAdmin: boolean }) {
 		<div className="max-w-5xl mx-auto p-4">
 			<div className="flex flex-wrap items-center gap-3 mb-4 print:hidden">
 				<p className="text-gray-600 flex-1 min-w-64">
-					{activas.length} mesas activas. Imprime la hoja y coloca cada tarjeta en su mesa: al escanearla, el pedido llega a la barra con su número.
+					{activas.length} mesas activas. Imprime la hoja y coloca cada tarjeta en su mesa: al escanearla, el pedido llega a la barra con su nombre y número.
 				</p>
 				<button onClick={() => window.print()} className="px-4 py-2 rounded-lg bg-delicias text-white font-bold">
 					Imprimir
@@ -118,9 +119,8 @@ export default function QrMesas({ esAdmin }: { esAdmin: boolean }) {
 				{activas.map((m) => (
 					<div key={m.numero} className="bg-white rounded-2xl border-2 border-delicias p-4 text-center break-inside-avoid flex flex-col">
 						<img src="/logo-las-delicias.webp" alt="" className="w-28 mx-auto rounded mb-2" />
-						<img src={m.qr} alt={`QR de ${m.nombre}`} className="w-full max-w-[180px] mx-auto" />
-						<p className="text-2xl font-black text-delicias mt-2">{nombrePorDefecto(m) ? `Mesa ${m.numero}` : m.nombre}</p>
-						{!nombrePorDefecto(m) && <p className="text-sm font-semibold text-gray-500">Mesa {m.numero}</p>}
+						<img src={m.qr} alt={`QR de ${etiquetaMesa(m.numero, m.nombre, { conNumero: true })}`} className="w-full max-w-[180px] mx-auto" />
+						<p className="text-2xl font-black text-delicias mt-2">{etiquetaMesa(m.numero, m.nombre, { conNumero: true })}</p>
 						<p className="text-sm text-gray-600">Escanea, pide y te lo llevamos</p>
 
 						<div className="mt-3 pt-3 border-t flex flex-col gap-1 text-xs print:hidden">
@@ -144,8 +144,7 @@ export default function QrMesas({ esAdmin }: { esAdmin: boolean }) {
 						{inactivas.map((m) => (
 							<li key={m.numero} className="flex items-center gap-3 p-3">
 								<span className="flex-1">
-									<b>Mesa {m.numero}</b>
-									{!nombrePorDefecto(m) && <span className="text-gray-500"> · {m.nombre}</span>}
+									<b>{etiquetaMesa(m.numero, m.nombre, { conNumero: true })}</b>
 								</span>
 								<button onClick={() => cambiarActiva(m, true)} disabled={ocupado}
 									className="px-3 py-1.5 rounded-lg bg-gray-100 font-semibold">

@@ -6,6 +6,7 @@ import type { Producto } from "../types/producto";
 export interface MesaActual {
 	numero: number;
 	token: string; // código secreto del QR
+	nombre: string | null;
 	desde: number; // cuándo se escaneó (ms)
 }
 
@@ -21,13 +22,14 @@ interface Carrito {
 	lineas: LineaCarrito[];
 	mesa: number | null;
 	mesaToken: string | null;
+	mesaNombre: string | null;
 	total: number;
 	unidades: number;
 	cantidadDe: (id: string) => number;
 	cambiar: (producto: Producto, delta: number) => void;
 	fijarCantidad: (id: string, cantidad: number) => void;
 	vaciar: () => void;
-	fijarMesa: (mesa: { numero: number; token: string } | null) => void;
+	fijarMesa: (mesa: Omit<MesaActual, "desde"> | null) => void;
 }
 
 const ContextoCarrito = createContext<Carrito | null>(null);
@@ -39,7 +41,10 @@ function cargar(): { lineas: LineaCarrito[]; mesa: MesaActual | null } {
 		if (guardado && Array.isArray(guardado.lineas)) {
 			const mesa = guardado.mesa;
 			const vigente = mesa && typeof mesa === "object" && mesa.token && Date.now() - mesa.desde < VIGENCIA_MESA_MS;
-			return { lineas: guardado.lineas, mesa: vigente ? mesa : null };
+			return {
+				lineas: guardado.lineas,
+				mesa: vigente ? { ...mesa, nombre: typeof mesa.nombre === "string" ? mesa.nombre : null } : null,
+			};
 		}
 	} catch {
 		/* sin almacenamiento o dato corrupto */
@@ -54,7 +59,7 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
 
 	// Estable entre renders: se puede usar en dependencias de efectos
 	const fijarMesa = useCallback(
-		(m: { numero: number; token: string } | null) => setMesa(m ? { ...m, desde: Date.now() } : null),
+		(m: Omit<MesaActual, "desde"> | null) => setMesa(m ? { ...m, desde: Date.now() } : null),
 		[],
 	);
 
@@ -73,6 +78,7 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
 			lineas,
 			mesa: mesa?.numero ?? null,
 			mesaToken: mesa?.token ?? null,
+			mesaNombre: mesa?.nombre ?? null,
 			total,
 			unidades,
 			cantidadDe: (id) => lineas.find((l) => l.producto.id === id)?.cantidad ?? 0,

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Hand, ReceiptText } from "lucide-react";
 import { api } from "../lib/api";
+import { etiquetaMesa } from "../lib/mesa";
 
 // Botones para que el cliente sentado llame al personal o pida la cuenta
-export default function BarraMesa({ mesa, token }: { mesa: number; token: string }) {
+export default function BarraMesa({ mesa, nombre, token }: { mesa: number; nombre: string | null; token: string }) {
 	const [aviso, setAviso] = useState("");
 	const [enviando, setEnviando] = useState(false);
 
@@ -22,7 +23,7 @@ export default function BarraMesa({ mesa, token }: { mesa: number; token: string
 
 	return (
 		<div className="mb-6 rounded-2xl bg-merengue p-4 flex flex-wrap items-center gap-3">
-			<p className="font-bold text-delicias-profundo mr-auto">Estás en la mesa {mesa}</p>
+			<p className="font-bold text-delicias-profundo mr-auto">Estás en {etiquetaMesa(mesa, nombre)}</p>
 			<button disabled={enviando} onClick={() => llamar("atencion")}
 				className="h-11 px-4 rounded-full bg-white text-delicias font-bold flex items-center gap-2 hover:bg-delicias-claro disabled:opacity-50">
 				<Hand className="w-4 h-4" aria-hidden="true" /> Llamar al personal

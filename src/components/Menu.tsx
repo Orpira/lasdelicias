@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import { euros } from "../lib/api";
 import { useCarrito } from "../lib/carrito";
 import { useProductos } from "../lib/productos";
+import { etiquetaMesa } from "../lib/mesa";
 import { CATEGORIAS, type Categoria, type Producto } from "../types/producto";
 import BarraMesa from "./BarraMesa";
 
@@ -40,7 +41,7 @@ export default function Menu() {
 					<h1 className="text-4xl sm:text-5xl font-extrabold tracking-titular">La carta</h1>
 					<p className="mt-2 text-lg text-tinta/70">
 						{carrito.mesa
-							? `Pide desde la mesa ${carrito.mesa} y te lo llevamos.`
+							? `Pide desde ${etiquetaMesa(carrito.mesa, carrito.mesaNombre)} y te lo llevamos.`
 							: "Elige lo que te apetezca: para tomar aquí o para recoger sin esperar."}
 					</p>
 				</div>
@@ -66,7 +67,7 @@ export default function Menu() {
 			</div>
 
 			<div className="max-w-6xl mx-auto px-5 pt-6">
-				{carrito.mesa && carrito.mesaToken && <BarraMesa mesa={carrito.mesa} token={carrito.mesaToken} />}
+				{carrito.mesa && carrito.mesaToken && <BarraMesa mesa={carrito.mesa} nombre={carrito.mesaNombre} token={carrito.mesaToken} />}
 
 				{error && (
 					<p className="p-4 rounded-xl bg-red-50 text-red-700">No se ha podido cargar la carta. Comprueba tu conexión y recarga la página.</p>

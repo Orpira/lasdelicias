@@ -8,6 +8,7 @@ import { useCarrito } from "../lib/carrito";
 import { DIAS, enlaceMapa, estadoHoy, telefonoLegible, useNegocio } from "../lib/negocio";
 import { useProductos } from "../lib/productos";
 import { euros } from "../lib/api";
+import { etiquetaMesa } from "../lib/mesa";
 
 const PASOS = [
 	{ titulo: "Elige", texto: "Escanea el QR de tu mesa o abre la carta desde casa." },
@@ -77,7 +78,7 @@ export default function Home() {
 						<div className="mt-8 flex flex-wrap gap-3">
 							<Link to="/menu"
 								className="bg-white text-delicias-profundo font-bold text-lg px-6 py-3.5 rounded-xl hover:bg-merengue transition-colors">
-								{carrito.mesa ? `Pedir en la mesa ${carrito.mesa}` : "Ver la carta y pedir"}
+								{carrito.mesa ? `Pedir en ${etiquetaMesa(carrito.mesa, carrito.mesaNombre)}` : "Ver la carta y pedir"}
 							</Link>
 							{negocio && (
 								<a href={enlaceMapa(negocio.direccion)} target="_blank" rel="noopener noreferrer"

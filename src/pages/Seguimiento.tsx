@@ -5,6 +5,7 @@ import { BellRing, ChefHat, ClipboardCheck, Croissant } from "lucide-react";
 import { FormularioOpinion } from "../components/Opiniones";
 import { api, escuchar, euros, hora } from "../lib/api";
 import type { EstadoPedido, Pedido } from "../types/producto";
+import { etiquetaMesa } from "../lib/mesa";
 
 const PASOS: { estado: EstadoPedido; titulo: string; Icono: typeof ClipboardCheck }[] = [
 	{ estado: "nuevo", titulo: "Recibido", Icono: ClipboardCheck },
@@ -64,7 +65,7 @@ export default function Seguimiento() {
 				<p className="text-7xl font-extrabold tracking-titular text-delicias">#{pedido.numero_dia}</p>
 				<p className="text-gray-600 mt-1">
 					{pedido.nombre_cliente}
-					{pedido.tipo === "mesa" && pedido.mesa_numero ? ` · Mesa ${pedido.mesa_numero}` : ""}
+					{pedido.tipo === "mesa" && pedido.mesa_numero ? ` · ${etiquetaMesa(pedido.mesa_numero, pedido.mesa_nombre)}` : ""}
 					{pedido.hora_recogida ? ` · Recoger a las ${hora(pedido.hora_recogida)}` : ""}
 				</p>
 			</div>

@@ -68,8 +68,10 @@ export default async function rutasStaff(app) {
 		// Llamadas desde las mesas
 		privado.get("/admin/llamadas", async () => {
 			const { rows } = await query(
-				`SELECT id, mesa_numero, motivo, atendida, created_at FROM llamadas_mesa
-				 WHERE NOT atendida ORDER BY created_at`,
+				`SELECT l.id, l.mesa_numero, m.nombre AS mesa_nombre, l.motivo, l.atendida, l.created_at
+				 FROM llamadas_mesa l
+				 LEFT JOIN mesas m ON m.numero = l.mesa_numero
+				 WHERE NOT l.atendida ORDER BY l.created_at`,
 			);
 			return rows;
 		});
