@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import IconoMarca from "./IconoMarca";
 import { enlaceMapa, telefonoLegible, useNegocio } from "../lib/negocio";
 
@@ -44,7 +43,8 @@ export default function Footer() {
 			<div className="border-t border-white/15">
 				<div className="max-w-6xl mx-auto px-5 py-4 flex flex-wrap justify-between gap-2 text-sm text-white/60">
 					<span>© {new Date().getFullYear()} {negocio?.nombre ?? "Las Delicias"}</span>
-					<Link to="/admin" className="hover:text-white">Acceso del personal</Link>
+					{/* En otra pestaña: el panel queda abierto aparte y la web sigue en esta */}
+					<a href="/admin" target="_blank" rel="noopener" className="hover:text-white">Acceso del personal</a>
 				</div>
 			</div>
 		</footer>

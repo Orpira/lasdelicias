@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { House } from "lucide-react";
 import { api, guardarToken, leerToken } from "../lib/api";
 import PanelPedidos from "../components/admin/PanelPedidos";
 import GestionCarta from "../components/admin/GestionCarta";
@@ -76,7 +77,12 @@ export default function Admin() {
 		<div className="min-h-screen bg-gray-100 text-gray-800">
 			<header className="bg-white shadow-sm print:hidden">
 				<div className="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
-					<nav className="flex gap-2 flex-1">
+					<Link to="/" title="Volver a la web" aria-label="Volver a la web"
+						className="flex items-center gap-2 pr-3 mr-1 border-r border-gray-200">
+						<img src="/logo-las-delicias.webp" alt="" className="h-9 w-auto rounded-md" />
+						<House className="w-4 h-4 text-gray-500" aria-hidden="true" />
+					</Link>
+					<nav className="flex flex-wrap gap-2 flex-1">
 						{pestanas.map((p) => (
 							<button key={p.id} onClick={() => setPestana(p.id)}
 								className={`px-4 py-2 rounded-lg font-bold ${pestana === p.id ? "bg-delicias text-white" : "bg-gray-100 hover:bg-gray-200"}`}>
@@ -122,7 +128,7 @@ function Login({ alEntrar }: { alEntrar: (u: Usuario) => void }) {
 	}
 
 	return (
-		<div className="min-h-[70vh] flex items-center justify-center px-4 bg-gray-50">
+		<div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
 			<form onSubmit={entrar} className="w-full max-w-sm bg-white rounded-2xl shadow p-6 flex flex-col gap-3 text-gray-800">
 				<img src="/logo-las-delicias.webp" alt="Las Delicias" className="w-40 mx-auto rounded-lg mb-2" />
 				<h1 className="text-xl font-bold text-center">Acceso del personal</h1>
@@ -134,6 +140,9 @@ function Login({ alEntrar }: { alEntrar: (u: Usuario) => void }) {
 				<button disabled={enviando} className="py-3 rounded-xl bg-delicias text-white font-bold hover:bg-delicias-oscuro disabled:opacity-60">
 					{enviando ? "Entrando…" : "Entrar"}
 				</button>
+				<Link to="/" className="mt-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-600 hover:text-delicias">
+					<House className="w-4 h-4" aria-hidden="true" /> Volver a la web
+				</Link>
 			</form>
 		</div>
 	);
