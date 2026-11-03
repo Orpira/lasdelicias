@@ -1,14 +1,15 @@
 // /pedido/:codigo — el cliente ve en tiempo real cómo va su pedido
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { BellRing, ChefHat, ClipboardCheck, Croissant } from "lucide-react";
 import { api, escuchar, euros, hora } from "../lib/api";
 import type { EstadoPedido, Pedido } from "../types/producto";
 
-const PASOS: { estado: EstadoPedido; titulo: string; emoji: string }[] = [
-	{ estado: "nuevo", titulo: "Recibido", emoji: "📝" },
-	{ estado: "preparando", titulo: "Preparando", emoji: "👩‍🍳" },
-	{ estado: "listo", titulo: "¡Listo!", emoji: "✅" },
-	{ estado: "entregado", titulo: "Entregado", emoji: "🥐" },
+const PASOS: { estado: EstadoPedido; titulo: string; Icono: typeof ClipboardCheck }[] = [
+	{ estado: "nuevo", titulo: "Recibido", Icono: ClipboardCheck },
+	{ estado: "preparando", titulo: "Preparando", Icono: ChefHat },
+	{ estado: "listo", titulo: "Listo", Icono: BellRing },
+	{ estado: "entregado", titulo: "Entregado", Icono: Croissant },
 ];
 
 function mensaje(p: Pedido) {
@@ -50,10 +51,10 @@ export default function Seguimiento() {
 	const indice = PASOS.findIndex((p) => p.estado === pedido.estado);
 
 	return (
-		<div className="max-w-xl mx-auto px-4 py-8 text-gray-800">
+		<div className="max-w-xl mx-auto px-4 py-8 text-tinta">
 			<div className="text-center mb-6">
-				<p className="text-sm uppercase tracking-wide text-gray-500">Pedido</p>
-				<p className="text-6xl font-black text-delicias">#{pedido.numero_dia}</p>
+				<p className="text-tinta/60 font-semibold">Tu número de pedido</p>
+				<p className="text-7xl font-extrabold tracking-titular text-delicias">#{pedido.numero_dia}</p>
 				<p className="text-gray-600 mt-1">
 					{pedido.nombre_cliente}
 					{pedido.tipo === "mesa" && pedido.mesa_numero ? ` · Mesa ${pedido.mesa_numero}` : ""}
@@ -71,15 +72,15 @@ export default function Seguimiento() {
 			{pedido.estado !== "cancelado" && (
 				<ol className="grid grid-cols-4 gap-2 mb-8">
 					{PASOS.map((paso, i) => (
-						<li key={paso.estado} className={`text-center rounded-xl py-3 ${i <= indice ? "bg-delicias text-white" : "bg-gray-100 text-gray-400"}`}>
-							<div className="text-2xl">{paso.emoji}</div>
+						<li key={paso.estado} className={`text-center rounded-xl py-3 ${i <= indice ? "bg-delicias text-white" : "bg-merengue text-delicias/40"}`}>
+							<paso.Icono className="w-6 h-6 mx-auto" aria-hidden="true" />
 							<div className="text-xs font-semibold mt-1">{paso.titulo}</div>
 						</li>
 					))}
 				</ol>
 			)}
 
-			<ul className="bg-white rounded-2xl shadow divide-y">
+			<ul className="bg-white rounded-2xl border border-delicias/15 divide-y">
 				{pedido.items.map((it, i) => (
 					<li key={i} className="flex justify-between p-3">
 						<span>{it.cantidad} × {it.nombre}</span>

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Home from "../pages/Home";
 import Menu from "../components/Menu";
@@ -12,12 +13,18 @@ import "../App.css";
 
 export default function App() {
 	// El panel del local ocupa toda la pantalla, sin cabecera ni pie públicos
-	const esPanel = useLocation().pathname.startsWith("/admin");
+	const { pathname } = useLocation();
+	const esPanel = pathname.startsWith("/admin");
+
+	// Cada página nueva empieza arriba (no al cambiar de categoría en la carta)
+	useEffect(() => {
+		window.scrollTo(0, 0);
+	}, [pathname]);
 
 	return (
 		<CarritoProvider>
 			{!esPanel && <Navbar />}
-			<main className="bg-[#fffaf5] min-h-[70vh]">
+			<main className="bg-white min-h-[70vh]">
 				<Routes>
 					<Route path="/" element={<Home />} />
 					<Route path="/menu" element={<Menu />} />
