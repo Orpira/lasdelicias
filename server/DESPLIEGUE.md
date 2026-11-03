@@ -5,20 +5,46 @@ Consumo esperado: Postgres + API ≈ 150–250 MB de RAM; cabe holgado junto a n
 
 ## Instalación rápida (un comando)
 
-Con el DNS del paso 1 ya creado, en el servidor:
+Con el DNS del paso 1 ya creado, en el servidor (con tu usuario; las variables van **después** de `sudo`):
 
 ```bash
-ssh root@167.233.139.93
 curl -fsSL https://raw.githubusercontent.com/Orpira/lasdelicias/main/server/deploy/instalar.sh \
-  | ADMIN_EMAIL=dueno@lasdelicias.es ADMIN_NOMBRE="Dueño" \
-    FRONT_ORIGENES="https://lasdelicias.vercel.app" bash
+  | sudo ADMIN_EMAIL=tu@email.es ADMIN_NOMBRE="Tu nombre" \
+         FRONT_ORIGENES="https://lasdelicias.vercel.app" bash
 ```
 
-El script clona el repo en `/opt/lasdelicias`, genera los secretos, arranca Postgres + API + copias de seguridad, crea la cuenta de administración (te pide la contraseña), detecta tu proxy (Caddy, Nginx o Traefik) y te dice el paso exacto para publicar el HTTPS. Al final muestra la clave y el secreto para configurar n8n. Volver a ejecutarlo **actualiza** sin tocar el `.env` ni los datos.
+El script:
 
-> Mientras la rama no esté fusionada en `main`, añade `RAMA=migracion-backend-propio` y usa la URL raw de esa rama.
+1. clona el repo en `/opt/lasdelicias` y genera los secretos en `server/.env`;
+2. detecta **Nginx Proxy Manager** y n8n, y une la API a su red Docker (`PROXY_NETWORK`); si n8n está en esa red, le envía los eventos por la red interna;
+3. arranca Postgres + API + copias de seguridad (contenedores `lasdelicias-*`, independientes del resto del servidor);
+4. crea la cuenta de administración (te pide la contraseña);
+5. te dice exactamente qué poner en el proxy y muestra la clave y el secreto para n8n.
 
-Los pasos 1–7 de abajo explican lo mismo a mano.
+Volver a ejecutarlo **actualiza** sin tocar el `.env` ni los datos.
+
+### Publicar la API en Nginx Proxy Manager
+
+`http://IP-del-servidor:81` → Hosts → Proxy Hosts → **Add Proxy Host**:
+
+| Pestaña | Campo | Valor |
+|---|---|---|
+| Details | Domain Names | `api-delicias.orpira.es` |
+| | Scheme / Forward Hostname / Port | `http` / `lasdelicias-api` / `3001` |
+| | Block Common Exploits, Websockets Support | ✔ |
+| SSL | Request a new SSL Certificate, Force SSL, HTTP/2 | ✔ |
+| Advanced | Custom Nginx Configuration | ver abajo |
+
+```nginx
+proxy_buffering off;
+proxy_cache off;
+proxy_read_timeout 1h;
+client_max_body_size 6m;
+```
+
+Las tres primeras líneas son imprescindibles para el tiempo real (panel de barra, cocina y seguimiento del cliente); la última permite subir fotos de hasta 5 MB.
+
+Los pasos 1–8 de abajo explican lo mismo a mano.
 
 ## 1. DNS
 
@@ -66,6 +92,7 @@ docker compose exec -e STAFF_PASSWORD='clave-de-la-barra' api npm run crear-staf
 
 Usa el mismo proxy que ya publica n8n:
 
+- **Nginx Proxy Manager**: ver la tabla de la instalación rápida (destino `lasdelicias-api:3001`).
 - **Caddy**: añade el bloque de `deploy/Caddyfile.ejemplo` y `caddy reload`.
 - **Nginx**: copia `deploy/nginx.ejemplo.conf`, enlázalo y ejecuta `certbot --nginx -d api-delicias.orpira.es`.
 - **Traefik**: etiqueta el servicio `api` con el host `api-delicias.orpira.es` y su certresolver.
