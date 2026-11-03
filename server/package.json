@@ -1,0 +1,27 @@
+{
+  "name": "lasdelicias-api",
+  "version": "1.0.0",
+  "description": "API de Las Delicias: carta, pedidos, panel del local y eventos para n8n",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch --env-file=.env src/index.js",
+    "migrate": "node src/migrate.js",
+    "crear-staff": "node scripts/crear-staff.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.4.0",
+    "@fastify/jwt": "^10.2.7",
+    "@fastify/multipart": "^10.1.7",
+    "@fastify/rate-limit": "^11.2.2",
+    "bcryptjs": "^3.0.3",
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}

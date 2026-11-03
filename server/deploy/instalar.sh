@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Instalación / actualización del backend de Las Delicias en el servidor (Hetzner OrPiRa-Cloud).
+#
+# Uso (como root o con sudo):
+#   curl -fsSL https://raw.githubusercontent.com/Orpira/lasdelicias/main/server/deploy/instalar.sh | sudo bash
+# o, con el repo ya clonado:
+#   sudo bash /opt/lasdelicias/server/deploy/instalar.sh
+#
+# Variables opcionales:
+#   RAMA=main                                   rama a desplegar
+#   API_DOMINIO=api-delicias.orpira.es          dominio público de la API
+#   FRONT_ORIGENES="https://lasdelicias.vercel.app"   dominios del frontend (separados por comas)
+#   N8N_WEBHOOK_URL=https://n8n.orpira.es/webhook/las-delicias
+#   ADMIN_EMAIL=dueno@lasdelicias.es ADMIN_NOMBRE="Dueño"   crea la cuenta de administración
+set -euo pipefail
+
+RAMA="${RAMA:-main}"
+DIR="${DIR:-/opt/lasdelicias}"
+API_DOMINIO="${API_DOMINIO:-api-delicias.orpira.es}"
+FRONT_ORIGENES="${FRONT_ORIGENES:-https://lasdelicias.vercel.app}"
+N8N_WEBHOOK_URL="${N8N_WEBHOOK_URL:-}"
+REPO="https://github.com/Orpira/lasdelicias.git"
+
+verde() { printf '\033[32m%s\033[0m\n' "$*"; }
+amarillo() { printf '\033[33m%s\033[0m\n' "$*"; }
+rojo() { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+
+# 1. Requisitos
+command -v docker >/dev/null || { rojo "Docker no está instalado: curl -fsSL https://get.docker.com | sh"; exit 1; }
+docker compose version >/dev/null 2>&1 || { rojo "Falta el plugin docker compose"; exit 1; }
+command -v git >/dev/null || { apt-get update -qq && apt-get install -y -qq git; }
+command -v openssl >/dev/null || { apt-get update -qq && apt-get install -y -qq openssl; }
+
+# 2. Código
+if [ -d "$DIR/.git" ]; then
+	verde "→ Actualizando código ($RAMA)"
+	git -C "$DIR" fetch --quiet origin "$RAMA"
+	git -C "$DIR" checkout --quiet "$RAMA"
+	git -C "$DIR" pull --quiet --ff-only origin "$RAMA"
+else
+	verde "→ Descargando código en $DIR ($RAMA)"
+	git clone --quiet --branch "$RAMA" "$REPO" "$DIR"
+fi
+cd "$DIR/server"
+
+# 3. Secretos (solo la primera vez: nunca se sobrescribe un .env existente)
+secreto() { openssl rand -base64 36 | tr -d '/+=' | cut -c1-40; }
+if [ ! -f .env ]; then
+	verde "→ Generando .env con secretos nuevos"
+	cp .env.example .env
+	sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(secreto)|" .env
+	sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(secreto)|" .env
+	sed -i "s|^N8N_WEBHOOK_SECRET=.*|N8N_WEBHOOK_SECRET=$(secreto)|" .env
+	sed -i "s|^N8N_API_KEY=.*|N8N_API_KEY=$(secreto)|" .env
+	sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=$FRONT_ORIGENES|" .env
+	sed -i "s|^PUBLIC_URL=.*|PUBLIC_URL=https://$API_DOMINIO|" .env
+	sed -i "s|^N8N_WEBHOOK_URL=.*|N8N_WEBHOOK_URL=$N8N_WEBHOOK_URL|" .env
+	chmod 600 .env
+else
+	amarillo "→ .env ya existe: se conserva tal cual"
+fi
+
+# 4. Arranque
+verde "→ Construyendo y arrancando contenedores"
+docker compose up -d --build
+
+printf "→ Esperando a la API"
+for _ in $(seq 1 60); do
+	if curl -fs http://127.0.0.1:3001/health >/dev/null 2>&1; then echo; verde "→ API en marcha"; break; fi
+	printf "."; sleep 2
+done
+curl -fs http://127.0.0.1:3001/health >/dev/null || { echo; rojo "La API no responde. Revisa: docker compose logs api"; exit 1; }
+
+# 5. Cuenta de administración (opcional)
+if [ -n "${ADMIN_EMAIL:-}" ]; then
+	if [ -t 0 ] || [ -e /dev/tty ]; then
+		read -r -s -p "Contraseña para $ADMIN_EMAIL (mín. 10 caracteres): " CLAVE < /dev/tty; echo
+		docker compose exec -T -e STAFF_PASSWORD="$CLAVE" api node scripts/crear-staff.js "$ADMIN_EMAIL" "${ADMIN_NOMBRE:-Administración}" admin
+		unset CLAVE
+	fi
+fi
+
+# 6. Proxy HTTPS: detectar qué hay y dar el paso exacto
+echo
+verde "=== Siguiente paso: publicar https://$API_DOMINIO ==="
+if command -v caddy >/dev/null || docker ps --format '{{.Image}}' | grep -qi caddy; then
+	echo "Caddy detectado. Añade a tu Caddyfile y recarga:"
+	sed "s/api-delicias.orpira.es/$API_DOMINIO/" deploy/Caddyfile.ejemplo
+elif command -v nginx >/dev/null; then
+	echo "Nginx detectado. Ejecuta:"
+	echo "  sed 's/api-delicias.orpira.es/$API_DOMINIO/' $DIR/server/deploy/nginx.ejemplo.conf > /etc/nginx/sites-available/$API_DOMINIO"
+	echo "  ln -sf /etc/nginx/sites-available/$API_DOMINIO /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx"
+	echo "  certbot --nginx -d $API_DOMINIO"
+elif docker ps --format '{{.Image}}' | grep -qi traefik; then
+	echo "Traefik detectado: añade al servicio 'api' de docker-compose.yml las etiquetas de host '$API_DOMINIO'"
+	echo "y conéctalo a la red de Traefik (ver DESPLIEGUE.md)."
+else
+	amarillo "No se detectó proxy. Ver server/DESPLIEGUE.md, sección 4."
+fi
+
+echo
+verde "=== Datos para configurar n8n ==="
+grep -E '^(N8N_WEBHOOK_SECRET|N8N_API_KEY)=' .env
+echo
+verde "Listo. Comprueba: curl https://$API_DOMINIO/negocio"

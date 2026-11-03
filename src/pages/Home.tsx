@@ -1,128 +1,139 @@
-const features = [
-	{
-		title: "Desayunos memorables",
-		desc: "Pan fresco, café aromático y arepas deliciosas. La amabilidad del personal hará tu experiencia aún más especial.",
-		icon: "🥐",
-	},
-	{
-		title: "Variedad y calidad",
-		desc: "Dulces, palmeras espectaculares (Ferrero Roche, Huesito, Nutella) y opciones sin gluten.",
-		icon: "🍰",
-	},
-	{
-		title: "Servicio impecable",
-		desc: "Ambiente distendido y trato cercano. Siéntete como en casa, ya sea que disfrutes allí mismo o lleves tus dulces a casa.",
-		icon: "🤝",
-	},
+import { Link } from "react-router-dom";
+import { DIAS, telefonoLegible, useNegocio } from "../lib/negocio";
+import { useCarrito } from "../lib/carrito";
+
+const destacados = [
+	{ img: "/demo/comida-casera.webp", titulo: "Comida casera para llevar", texto: "El menú de hoy: albóndigas, guisos, arroces, ensaladilla… recién hecho cada día." },
+	{ img: "/demo/vitrina-dulces.webp", titulo: "Pastelería del obrador", texto: "Palmeras rellenas, suizos, éclairs, tartas de queso, de manzana y por encargo." },
+	{ img: "/demo/cafe-con-leche.webp", titulo: "Café y desayunos", texto: "Café, tostadas, arepas y bollería recién hecha desde primera hora." },
+	{ img: "/demo/bunuelos-natilla.webp", titulo: "Sabores de casa", texto: "Natilla con buñuelos y otras recetas tradicionales en temporada." },
+];
+
+const comoFunciona = [
+	{ icono: "📱", titulo: "Pide desde el móvil", texto: "Escanea el QR de tu mesa o entra en la carta y elige." },
+	{ icono: "👩‍🍳", titulo: "Lo preparamos", texto: "Tu pedido llega al momento a la barra, sin colas." },
+	{ icono: "🔔", titulo: "Te avisamos", texto: "Sigue el estado en directo y recoge cuando esté listo." },
 ];
 
 export default function Home() {
+	const negocio = useNegocio();
+	const { mesa } = useCarrito();
+	const whatsapp = negocio?.whatsapp.replace(/\D/g, "");
+
 	return (
-		<main className="font-sans bg-gradient-radial from-yellow-100 via-yellow-300 to-pink-100 text-[#3e2723] min-h-screen">
-			{/* Hero Section */}
-			<section
-				className="flex flex-col items-center justify-center px-4 py-12 sm:py-20 relative overflow-hidden"
-				style={{
-					background:
-						"radial-gradient(circle at 50% 30%, #fffbe6 60%, #ffe082 80%, #f8bbd0 100%)",
-				}}
-			>
-				<div className="absolute inset-0 pointer-events-none z-0">
-					{/* Círculo cálido principal */}
-					<div className="w-[32rem] h-[32rem] bg-yellow-300 rounded-full blur-3xl opacity-50 absolute -top-40 -left-40 animate-fade-slow"></div>
-					{/* Círculo rosado decorativo */}
-					<div className="w-96 h-96 bg-pink-200 rounded-full blur-2xl opacity-30 absolute -bottom-32 -right-32 animate-fade-slow"></div>
-					{/* SVG decorativo de trigo */}
-					<svg
-						className="absolute left-8 top-8 opacity-20 w-32 h-32"
-						viewBox="0 0 64 64"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path
-							d="M32 8C32 8 36 24 32 40C28 56 32 56 32 56"
-							stroke="#eab308"
-							strokeWidth="3"
-							strokeLinecap="round"
-						/>
-						<path
-							d="M32 16C32 16 34 24 32 32C30 40 32 40 32 40"
-							stroke="#f59e42"
-							strokeWidth="2"
-							strokeLinecap="round"
-						/>
-					</svg>
-				</div>
-
-				<span className="mt-0 font-pacifico text-2xl sm:text-xl font-extrabold text-center z-10 drop-shadow-lg text-red-800">
-					Cafetería ~ Panadería <br />
-				</span>
-				<span className="mt-0 font-pacifico text-6xl sm:text-4xl font-extrabold text-center z-10 drop-shadow-lg text-red-800">
-					Las Delicias
-				</span>
-
-				<div className="relative z-10 mt-8 mb-6">
-					<img
-						src="/portada.webp"
-						alt="Panadería Las Delicias"
-						className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl rounded-3xl shadow-xl object-cover border-4 border-yellow-400 aspect-video"
-						style={{ height: "auto" }}
-					/>
-					{/* 	<div className="absolute top-2 left-2 bg-white/80 text-pink-600 px-3 py-1 rounded-full text-xs font-bold shadow">
-						¡Nuevo!
-					</div> */}
-				</div>
-				<p className="max-w-xl mx-auto text-lg sm:text-xl mt-5 mb-2 text-center z-10">
-					Situada en Calle Ayala, 28, Las Delicias es reconocida por su ambiente
-					acogedor, productos frescos y atención al cliente excepcional. ¡El
-					lugar perfecto para desayunar o merendar en el centro de Málaga!
-				</p>
-				<a
-					href="tel:633272668"
-					className="inline-block bg-pink-600 text-white px-8 py-3 rounded-xl font-bold no-underline mt-6 shadow-lg hover:bg-pink-700 transition text-lg z-10"
-				>
-					Llamar: 633 27 26 68
-				</a>
-			</section>
-
-			{/* Features Section */}
-			<section className="flex flex-wrap justify-center gap-8 px-4 pt-8 pb-12">
-				{features.map((f) => (
-					<div
-						key={f.title}
-						className="flex flex-col items-center justify-center bg-white rounded-2xl shadow-lg p-8 max-w-xs w-full hover:scale-105 transition-transform border border-pink-100"
-					>
-						<div className="text-5xl mb-4 animate-bounce">{f.icon}</div>
-						<h3 className="text-pink-600 text-xl sm:text-2xl font-bold mb-2 text-center">
-							{f.title}
-						</h3>
-						<p className="text-center text-base sm:text-lg text-gray-700">
-							{f.desc}
+		<main className="font-sans text-[#3e2723] bg-[#fffaf5]">
+			{/* Portada */}
+			<section className="relative overflow-hidden">
+				<div className="absolute inset-0 bg-gradient-to-b from-delicias-claro via-[#fffaf5] to-[#fffaf5]" />
+				<div className="relative max-w-6xl mx-auto px-4 py-10 sm:py-16 grid md:grid-cols-2 gap-10 items-center">
+					<div className="text-center md:text-left">
+						<img src="/logo-las-delicias.webp" alt="Cafetería ~ Panadería Las Delicias"
+							className="w-72 sm:w-80 mx-auto md:mx-0 rounded-2xl shadow-lg" />
+						<p className="text-lg sm:text-xl mt-6 text-gray-700">
+							{negocio?.descripcion ?? "Panadería, pastelería, cafetería y obrador artesano en el centro de Málaga."}
 						</p>
+						<div className="flex flex-wrap gap-3 mt-8 justify-center md:justify-start">
+							<Link to="/menu" className="bg-delicias text-white px-7 py-3 rounded-xl font-bold shadow-lg hover:bg-delicias-oscuro transition text-lg">
+								{mesa ? `Pedir en la mesa ${mesa}` : "Pedir ahora"}
+							</Link>
+							{negocio && (
+								<a href={`tel:${negocio.telefono}`} className="bg-white text-delicias border-2 border-delicias px-7 py-3 rounded-xl font-bold hover:bg-delicias-claro transition text-lg">
+									Llamar · {telefonoLegible(negocio.telefono)}
+								</a>
+							)}
+						</div>
 					</div>
-				))}
+					<div className="grid grid-cols-2 gap-3">
+						<img src="/demo/local.webp" alt="Interior del local" className="row-span-2 w-full h-full object-cover rounded-2xl shadow-md" />
+						<img src="/demo/cafe-y-bizcocho.webp" alt="Café con bizcocho casero" className="w-full aspect-square object-cover rounded-2xl shadow-md" />
+						<img src="/demo/vitrina.webp" alt="Vitrina de tartas" className="w-full aspect-square object-cover rounded-2xl shadow-md" />
+					</div>
+				</div>
 			</section>
 
-			{/* Call to Action & Map */}
-			<section className="text-center px-4 py-10 sm:py-16 bg-gradient-to-r from-yellow-100 via-pink-100 to-white">
-				<h3 className="mt-8 text-3xl sm:text-4xl font-bold text-pink-600 drop-shadow mb-4">
-					¡Un lugar para repetir!
-				</h3>
-				<p className="max-w-lg mx-auto text-lg sm:text-xl mt-4 mb-6 text-gray-700">
-					Quienes han visitado Las Delicias siempre recomiendan volver. Si estás
-					en Málaga, haz una parada y disfruta de todo lo que tenemos para
-					ofrecerte.
-				</p>
-				<div className="mt-6 flex justify-center">
+			{/* Cómo funciona */}
+			<section className="max-w-6xl mx-auto px-4 py-12">
+				<h2 className="text-3xl font-bold text-center text-delicias mb-8">Pide sin esperar</h2>
+				<div className="grid sm:grid-cols-3 gap-6">
+					{comoFunciona.map((p) => (
+						<div key={p.titulo} className="bg-white rounded-2xl shadow p-6 text-center border border-delicias-claro">
+							<div className="text-4xl mb-3">{p.icono}</div>
+							<h3 className="font-bold text-lg mb-1">{p.titulo}</h3>
+							<p className="text-gray-600">{p.texto}</p>
+						</div>
+					))}
+				</div>
+			</section>
+
+			{/* Destacados */}
+			<section className="max-w-6xl mx-auto px-4 pb-12">
+				<h2 className="text-3xl font-bold text-center text-delicias mb-8">Del obrador a tu mesa</h2>
+				<div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+					{destacados.map((d) => (
+						<article key={d.titulo} className="bg-white rounded-2xl shadow overflow-hidden">
+							<img src={d.img} alt={d.titulo} className="w-full h-48 object-cover" loading="lazy" />
+							<div className="p-5">
+								<h3 className="font-bold text-lg text-delicias">{d.titulo}</h3>
+								<p className="text-gray-600">{d.texto}</p>
+							</div>
+						</article>
+					))}
+				</div>
+			</section>
+
+			{/* Información y contacto */}
+			<section className="bg-white border-t border-delicias-claro">
+				<div className="max-w-6xl mx-auto px-4 py-12 grid md:grid-cols-2 gap-10">
+					<div>
+						<h2 className="text-3xl font-bold text-delicias mb-4">Visítanos</h2>
+						{negocio ? (
+							<>
+								<p className="text-lg font-semibold">{negocio.direccion}</p>
+								{negocio.referencia && <p className="text-gray-600 mb-4">{negocio.referencia}</p>}
+								<div className="flex flex-wrap gap-2 mb-6">
+									{negocio.servicios.map((s) => (
+										<span key={s} className="px-3 py-1 rounded-full bg-delicias-claro text-delicias text-sm font-semibold">{s}</span>
+									))}
+								</div>
+								<h3 className="font-bold mb-2">Horario</h3>
+								<table className="text-sm mb-6">
+									<tbody>
+										{DIAS.map((d) => (
+											<tr key={d.clave}>
+												<td className="pr-6 py-0.5">{d.nombre}</td>
+												<td className={negocio.horario[d.clave] ? "font-semibold" : "text-gray-400"}>
+													{negocio.horario[d.clave] ?? "Consultar"}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+								<div className="flex flex-wrap gap-3">
+									{whatsapp && (
+										<a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent("¡Hola! Quiero hacer un pedido a domicilio:")}`}
+											target="_blank" rel="noopener noreferrer"
+											className="bg-[#25D366] text-white px-5 py-2.5 rounded-xl font-bold hover:brightness-95">
+											Pedido a domicilio por WhatsApp
+										</a>
+									)}
+									{negocio.instagram && (
+										<a href={`https://instagram.com/${negocio.instagram}`} target="_blank" rel="noopener noreferrer"
+											className="bg-gradient-to-r from-[#f58529] via-[#dd2a7b] to-[#8134af] text-white px-5 py-2.5 rounded-xl font-bold hover:brightness-95">
+											@{negocio.instagram}
+										</a>
+									)}
+								</div>
+							</>
+						) : (
+							<p className="text-gray-500">Cargando información…</p>
+						)}
+					</div>
 					<iframe
-						src="https://maps.google.com/maps?q=Panader%C3%ADa%20Confiter%C3%ADa%20Obrador%20Las%20Delicias%2C%20Calle%20Ayala%2C%2028%2C%20Distrito%20Centro%2C%2029002%20M%C3%A1laga&amp;output=embed"
-						width="100%"
-						height="300"
-						className="rounded-2xl border-0 max-w-xl w-full shadow-lg"
-						allowFullScreen
+						src="https://maps.google.com/maps?q=Calle%20Ayala%2C%2028%2C%2029002%20M%C3%A1laga&output=embed"
+						className="w-full h-80 md:h-full min-h-72 rounded-2xl border-0 shadow"
 						loading="lazy"
-						title="Mapa Las Delicias Málaga"
-					></iframe>
+						title="Mapa de Las Delicias en Málaga"
+					/>
 				</div>
 			</section>
 		</main>

@@ -1,76 +1,57 @@
 import { useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { useCarrito } from "../lib/carrito";
 
-const navLinks = [
-	{ label: "Inicio", href: "/" },
-	{ label: "Menú", href: "/menu" },
-	{ label: "Contacto", href: "/contacto" },
+const enlaces = [
+	{ label: "Inicio", to: "/" },
+	{ label: "Carta", to: "/menu" },
+	{ label: "Mi pedido", to: "/pedido" },
 ];
 
 export default function Navbar() {
-	const [menuOpen, setMenuOpen] = useState(false);
+	const [abierto, setAbierto] = useState(false);
+	const { unidades, mesa } = useCarrito();
+
+	const estilo = ({ isActive }: { isActive: boolean }) =>
+		`block px-4 py-2 rounded-lg font-bold transition ${isActive ? "bg-delicias-claro text-delicias" : "text-gray-800 hover:bg-delicias-claro"}`;
+
 	return (
-		<nav className="sticky top-0 z-50 w-full bg-gradient-to-r from-white/70 via-white/60 to-white/30 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-900/60 backdrop-blur-md ring-1 ring-slate-900/5 dark:ring-slate-50/10 shadow-md transition-colors font-sans">
-			<div className="flex items-center justify-between w-full h-16 px-6">
-				<div className="flex items-center gap-3">
-					<div
-						className="border-4 border-yellow-400 rounded-full p-1 bg-white flex items-center justify-center"
-						style={{ width: "48px", height: "36px", borderRadius: "50%" }}
-					>
-						<img
-							src="/logo.webp"
-							alt="Logo Las Delicias"
-							className="object-cover w-10 h-8 rounded-full"
-						/>
-					</div>
-					<span className="font-bold text-2xl text-gray-800 font-pacifico">
-						Las Delicias
-					</span>
-				</div>
-				<ul className="hidden md:flex gap-6 items-center list-none m-0 p-0">
-					{navLinks.map((link) => (
-						<li key={link.href}>
-							<a
-								href={link.href}
-								className="text-gray-800 font-bold px-4 py-2 rounded hover:bg-yellow-300 transition"
-							>
-								{link.label}
-							</a>
+		<nav className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md shadow-sm font-sans">
+			<div className="flex items-center justify-between max-w-6xl mx-auto h-16 px-4">
+				<Link to="/" className="flex items-center gap-3" onClick={() => setAbierto(false)}>
+					<img src="/logo-las-delicias.webp" alt="Las Delicias" className="h-10 w-auto rounded-md" />
+					{mesa && <span className="text-xs font-bold px-2 py-1 rounded-full bg-delicias-claro text-delicias">Mesa {mesa}</span>}
+				</Link>
+				<ul className="hidden md:flex gap-2 items-center list-none m-0 p-0">
+					{enlaces.map((e) => (
+						<li key={e.to}>
+							<NavLink to={e.to} end className={estilo}>
+								{e.label}
+								{e.to === "/pedido" && unidades > 0 && (
+									<span className="ml-2 px-2 py-0.5 rounded-full bg-delicias text-white text-xs">{unidades}</span>
+								)}
+							</NavLink>
 						</li>
 					))}
 				</ul>
 				<button
-					className="md:hidden flex flex-col justify-center items-center w-8 h-8 bg-transparent border-none cursor-pointer"
-					onClick={() => setMenuOpen((open) => !open)}
-					aria-label="Abrir menú"
+					className="md:hidden flex flex-col justify-center items-center w-10 h-10 bg-transparent border-none cursor-pointer gap-1"
+					onClick={() => setAbierto((a) => !a)}
+					aria-label={abierto ? "Cerrar menú" : "Abrir menú"}
+					aria-expanded={abierto}
 				>
-					<span
-						className={`block w-6 h-1 bg-pink-600 rounded transition-all duration-300 mb-1 ${
-							menuOpen ? "rotate-45 translate-y-2" : ""
-						}`}
-					></span>
-					<span
-						className={`block w-6 h-1 bg-pink-600 rounded transition-all duration-300 mb-1 ${
-							menuOpen ? "opacity-0" : ""
-						}`}
-					></span>
-					<span
-						className={`block w-6 h-1 bg-pink-600 rounded transition-all duration-300 ${
-							menuOpen ? "-rotate-45 -translate-y-2" : ""
-						}`}
-					></span>
+					<span className={`block w-6 h-0.5 bg-delicias transition-all ${abierto ? "rotate-45 translate-y-1.5" : ""}`} />
+					<span className={`block w-6 h-0.5 bg-delicias transition-all ${abierto ? "opacity-0" : ""}`} />
+					<span className={`block w-6 h-0.5 bg-delicias transition-all ${abierto ? "-rotate-45 -translate-y-1.5" : ""}`} />
 				</button>
 			</div>
-			{/* Menú móvil */}
-			{menuOpen && (
-				<ul className="absolute top-16 left-0 w-full bg-yellow-400 flex flex-col items-center py-4 shadow-md md:hidden">
-					{navLinks.map((link) => (
-						<li key={link.href} className="w-full">
-							<a
-								href={link.href}
-								className="block w-full text-center text-gray-800 font-bold px-4 py-3 hover:bg-yellow-300 transition"
-							>
-								{link.label}
-							</a>
+			{abierto && (
+				<ul className="md:hidden bg-white border-t list-none m-0 p-2">
+					{enlaces.map((e) => (
+						<li key={e.to}>
+							<NavLink to={e.to} end className={estilo} onClick={() => setAbierto(false)}>
+								{e.label} {e.to === "/pedido" && unidades > 0 ? `(${unidades})` : ""}
+							</NavLink>
 						</li>
 					))}
 				</ul>

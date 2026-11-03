@@ -1,0 +1,66 @@
+# Las Delicias · backend en el servidor (Hetzner OrPiRa-Cloud)
+# Arranque:  docker compose up -d --build
+# La API solo escucha en 127.0.0.1:3001; el proxy (Caddy/Nginx) la publica con HTTPS.
+# Postgres NO se expone fuera del servidor.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: delicias
+      POSTGRES_USER: delicias
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      TZ: Europe/Madrid
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U delicias -d delicias"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://delicias:${POSTGRES_PASSWORD}@db:5432/delicias
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - uploads:/data/uploads
+    # Si n8n corre en Docker en este mismo servidor, descomenta para que la API
+    # le hable por la red interna (N8N_WEBHOOK_URL=http://n8n:5678/webhook/...)
+    # networks: [default, n8n]
+
+  # Copia diaria de la base de datos (se guardan 14 días en ./backups)
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Europe/Madrid
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: >
+      sh -c 'while true; do
+        pg_dump -h db -U delicias -d delicias -Fc -f /backups/delicias-$$(date +%F).dump &&
+        find /backups -name "delicias-*.dump" -mtime +14 -delete;
+        sleep 86400;
+      done'
+
+volumes:
+  db-data:
+  uploads:
+
+# networks:
+#   n8n:
+#     external: true
+#     name: NOMBRE_DE_LA_RED_DE_N8N   # docker network ls

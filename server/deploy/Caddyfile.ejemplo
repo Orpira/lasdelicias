@@ -1,0 +1,9 @@
+# Si usas Caddy: añade este bloque a tu Caddyfile y recarga (caddy reload).
+# Caddy saca y renueva el certificado HTTPS solo.
+api-delicias.orpira.es {
+	encode gzip
+	reverse_proxy 127.0.0.1:3001 {
+		# SSE (tiempo real del panel y del seguimiento): enviar al momento
+		flush_interval -1
+	}
+}
