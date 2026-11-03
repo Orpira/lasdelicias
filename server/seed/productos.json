@@ -1,0 +1,368 @@
+[
+  {
+    "categoria": "Desayunos",
+    "nombre": "Arepa con queso",
+    "descripcion": "Arepa recién hecha rellena de queso.",
+    "precio": 2.8,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Desayunos",
+    "nombre": "Arepa de jamón y queso",
+    "descripcion": "Arepa rellena de jamón y queso fundido.",
+    "precio": 3.2,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Desayunos",
+    "nombre": "Tostada con tomate",
+    "descripcion": "Pan del obrador con tomate natural y aceite de oliva.",
+    "precio": 1.8,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Desayunos",
+    "nombre": "Croissant de mantequilla",
+    "descripcion": "Hojaldre crujiente horneado en el obrador.",
+    "precio": 1.6,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Desayunos",
+    "nombre": "Napolitana de chocolate",
+    "descripcion": "Hojaldre trenzado con chocolate.",
+    "precio": 1.8,
+    "valoracion": 5,
+    "imagen": "/demo/trenzas-chocolate.webp"
+  },
+  {
+    "categoria": "Desayunos",
+    "nombre": "Bollos de leche",
+    "descripcion": "Bollos tiernos del obrador (unidad).",
+    "precio": 1.2,
+    "valoracion": 4,
+    "imagen": "/demo/bollos.webp"
+  },
+  {
+    "categoria": "Almuerzos",
+    "nombre": "Empanada de atún",
+    "descripcion": "Porción de empanada casera de atún.",
+    "precio": 2.8,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Almuerzos",
+    "nombre": "Empanada de carne",
+    "descripcion": "Porción de empanada casera de carne.",
+    "precio": 2.8,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Almuerzos",
+    "nombre": "Bocadillo de jamón serrano",
+    "descripcion": "Pan del obrador con jamón serrano.",
+    "precio": 3.5,
+    "valoracion": 4,
+    "imagen": ""
+  },
+  {
+    "categoria": "Almuerzos",
+    "nombre": "Bocadillo de tortilla",
+    "descripcion": "Pan del obrador con tortilla de patatas.",
+    "precio": 3.2,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Almuerzos",
+    "nombre": "Sándwich mixto",
+    "descripcion": "Jamón york y queso a la plancha.",
+    "precio": 2.8,
+    "valoracion": 4,
+    "imagen": ""
+  },
+  {
+    "categoria": "Comida casera",
+    "nombre": "Albóndigas en salsa",
+    "descripcion": "Ración de albóndigas caseras en salsa de tomate.",
+    "precio": 6.5,
+    "valoracion": 5,
+    "imagen": "/demo/albondigas.webp"
+  },
+  {
+    "categoria": "Comida casera",
+    "nombre": "Guiso de carne con papas",
+    "descripcion": "Carne guisada a fuego lento con papas y verduras.",
+    "precio": 7.0,
+    "valoracion": 5,
+    "imagen": "/demo/guiso-carne-papas.webp"
+  },
+  {
+    "categoria": "Comida casera",
+    "nombre": "Arroz con verduras y pollo",
+    "descripcion": "Ración de arroz salteado con verduras, pollo y salchicha.",
+    "precio": 6.0,
+    "valoracion": 5,
+    "imagen": "/demo/arroz-con-verduras.webp"
+  },
+  {
+    "categoria": "Comida casera",
+    "nombre": "Tortitas de verdura",
+    "descripcion": "Tortitas doradas con perejil (4 unidades).",
+    "precio": 4.5,
+    "valoracion": 5,
+    "imagen": "/demo/tortitas.webp"
+  },
+  {
+    "categoria": "Comida casera",
+    "nombre": "Ensaladilla",
+    "descripcion": "Ración de ensaladilla casera con huevo y zanahoria.",
+    "precio": 4.5,
+    "valoracion": 5,
+    "imagen": "/demo/ensaladilla.webp"
+  },
+  {
+    "categoria": "Comida casera",
+    "nombre": "Rollo de carne relleno",
+    "descripcion": "Pastel de carne relleno de huevo, en lonchas.",
+    "precio": 6.5,
+    "valoracion": 5,
+    "imagen": "/demo/rollo-de-carne.webp"
+  },
+  {
+    "categoria": "Comida casera",
+    "nombre": "Lomo asado",
+    "descripcion": "Lomo de cerdo asado en lonchas con ensalada.",
+    "precio": 7.0,
+    "valoracion": 5,
+    "imagen": "/demo/lomo-asado.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Palmera rellena de Nutella",
+    "descripcion": "Palmera de hojaldre rellena de Nutella.",
+    "precio": 2.6,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Palmera rellena de Ferrero Rocher",
+    "descripcion": "Palmera rellena de crema de avellana con trocitos crujientes.",
+    "precio": 2.6,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Palmera de Huesito",
+    "descripcion": "Palmera rellena con cobertura de chocolate y barquillo.",
+    "precio": 2.6,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Palmera de chocolate",
+    "descripcion": "Palmera bañada en chocolate.",
+    "precio": 2.6,
+    "valoracion": 5,
+    "imagen": "/demo/palmera-chocolate.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Palmera de cookies",
+    "descripcion": "Palmera rellena con crema y galleta de chocolate.",
+    "precio": 2.6,
+    "valoracion": 5,
+    "imagen": "/demo/palmera-cookies.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Palmera gigante de cookies",
+    "descripcion": "Para compartir: crema y galleta de chocolate.",
+    "precio": 4.5,
+    "valoracion": 5,
+    "imagen": "/demo/palmera-gigante-cookies.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Éclair de chocolate",
+    "descripcion": "Relleno de crema y bañado en chocolate.",
+    "precio": 2.2,
+    "valoracion": 5,
+    "imagen": "/demo/eclairs-chocolate.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Suizo de nata",
+    "descripcion": "Bollo tierno relleno de nata con azúcar glas.",
+    "precio": 2.0,
+    "valoracion": 5,
+    "imagen": "/demo/bollos-crema.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Bamba de azúcar",
+    "descripcion": "Bollo frito rebozado en azúcar.",
+    "precio": 1.6,
+    "valoracion": 4,
+    "imagen": "/demo/bambas-azucar.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Pastel de naranja",
+    "descripcion": "Bizcocho con glaseado de naranja y guinda.",
+    "precio": 2.2,
+    "valoracion": 5,
+    "imagen": "/demo/pasteles-naranja.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Pastel de fresa",
+    "descripcion": "Capas de bizcocho y crema con gelatina de fresa.",
+    "precio": 2.8,
+    "valoracion": 5,
+    "imagen": "/demo/red-velvet.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Tarta de queso con fresa",
+    "descripcion": "Porción de tarta de queso con cobertura de fresa.",
+    "precio": 3.2,
+    "valoracion": 5,
+    "imagen": "/demo/cuajada-frutos-rojos.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Tarta de queso con frutos rojos",
+    "descripcion": "Porción de tarta de queso con frutos rojos.",
+    "precio": 3.2,
+    "valoracion": 5,
+    "imagen": "/demo/tarta-queso-frutos-rojos.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Tarta de manzana",
+    "descripcion": "Porción de tarta de manzana artesana.",
+    "precio": 3.0,
+    "valoracion": 5,
+    "imagen": "/demo/tarta-manzana.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Tarta de chocolate",
+    "descripcion": "Porción de tarta de chocolate con virutas.",
+    "precio": 3.2,
+    "valoracion": 5,
+    "imagen": "/demo/tarta-chocolate.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Tarta de caramelo",
+    "descripcion": "Porción de tarta con cobertura de caramelo.",
+    "precio": 3.0,
+    "valoracion": 5,
+    "imagen": "/demo/tarta-caramelo.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Bizcocho casero",
+    "descripcion": "Porción de bizcocho esponjoso con cobertura de crema.",
+    "precio": 2.5,
+    "valoracion": 5,
+    "imagen": "/demo/porcion-bizcocho.webp"
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Tortas de aceite rellenas de chocolate",
+    "descripcion": "Tortas de aceite artesanas (paquete de 270 g).",
+    "precio": 3.5,
+    "valoracion": 5,
+    "imagen": "",
+    "stock": 10,
+    "stock_minimo": 3
+  },
+  {
+    "categoria": "Pastelería",
+    "nombre": "Plato navideño: natilla y buñuelos",
+    "descripcion": "Nuestra tradicional natilla con buñuelos. Solo en fiestas.",
+    "precio": 5.0,
+    "valoracion": 5,
+    "imagen": "/demo/bunuelos-natilla.webp"
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Café con leche",
+    "descripcion": "Café de tueste natural con leche cremosa.",
+    "precio": 1.5,
+    "valoracion": 5,
+    "imagen": "/demo/cafe-con-leche.webp"
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Café solo",
+    "descripcion": "Espresso.",
+    "precio": 1.3,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Cortado",
+    "descripcion": "Café con un toque de leche.",
+    "precio": 1.4,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Colacao",
+    "descripcion": "Cacao con leche caliente o fría.",
+    "precio": 1.6,
+    "valoracion": 4,
+    "imagen": ""
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Zumo de naranja natural",
+    "descripcion": "Recién exprimido.",
+    "precio": 2.5,
+    "valoracion": 5,
+    "imagen": ""
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Infusión",
+    "descripcion": "Manzanilla, poleo, té verde o té negro.",
+    "precio": 1.4,
+    "valoracion": 4,
+    "imagen": ""
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Agua mineral",
+    "descripcion": "Botella de 50 cl.",
+    "precio": 1.0,
+    "valoracion": 4,
+    "imagen": "",
+    "stock": 24,
+    "stock_minimo": 6
+  },
+  {
+    "categoria": "Bebidas",
+    "nombre": "Refresco",
+    "descripcion": "Lata de 33 cl.",
+    "precio": 1.8,
+    "valoracion": 4,
+    "imagen": "",
+    "stock": 24,
+    "stock_minimo": 6
+  }
+]
