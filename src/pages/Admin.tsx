@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { api, guardarToken, leerToken } from "../lib/api";
 import PanelPedidos from "../components/admin/PanelPedidos";
 import GestionCarta from "../components/admin/GestionCarta";
@@ -12,27 +13,37 @@ export interface Usuario {
 	rol: "admin" | "barra";
 }
 
-type Pestana = "pedidos" | "cocina" | "carta" | "mesas";
+// Cada pestaña tiene su dirección: /admin/barra, /admin/cocina, /admin/carta, /admin/mesas
+const PESTANAS = ["barra", "cocina", "carta", "mesas"] as const;
+type Pestana = (typeof PESTANAS)[number];
+const esPestana = (p: unknown): p is Pestana => PESTANAS.includes(p as Pestana);
+
+function pestanaRecordada(): Pestana {
+	try {
+		const p = localStorage.getItem("delicias.pestana");
+		return esPestana(p) ? p : "barra";
+	} catch {
+		return "barra";
+	}
+}
 
 export default function Admin() {
 	const [usuario, setUsuario] = useState<Usuario | null>(null);
 	const [comprobando, setComprobando] = useState(Boolean(leerToken()));
+	const { pestana: enUrl } = useParams();
+	const navigate = useNavigate();
+	const pestana: Pestana = esPestana(enUrl) ? enUrl : "barra";
+	const setPestana = (p: Pestana) => navigate(`/admin/${p}`);
+
 	// Cada tablet recuerda su pantalla (la de cocina abre directamente en "Cocina")
-	const [pestana, setPestanaEstado] = useState<Pestana>(() => {
+	useEffect(() => {
+		if (!esPestana(enUrl)) return;
 		try {
-			return (localStorage.getItem("delicias.pestana") as Pestana) || "pedidos";
-		} catch {
-			return "pedidos";
-		}
-	});
-	const setPestana = (p: Pestana) => {
-		setPestanaEstado(p);
-		try {
-			localStorage.setItem("delicias.pestana", p);
+			localStorage.setItem("delicias.pestana", enUrl);
 		} catch {
 			/* ignorar */
 		}
-	};
+	}, [enUrl]);
 
 	useEffect(() => {
 		if (!leerToken()) return;
@@ -47,11 +58,13 @@ export default function Admin() {
 		setUsuario(null);
 	}, []);
 
+	if (!enUrl) return <Navigate to={`/admin/${pestanaRecordada()}`} replace />;
+	if (!esPestana(enUrl)) return <Navigate to="/admin/barra" replace />;
 	if (comprobando) return <p className="text-center py-24 text-gray-500">Comprobando sesión…</p>;
 	if (!usuario) return <Login alEntrar={setUsuario} />;
 
 	const pestanas: { id: Pestana; texto: string }[] = [
-		{ id: "pedidos", texto: "📋 Barra" },
+		{ id: "barra", texto: "📋 Barra" },
 		{ id: "cocina", texto: "👩‍🍳 Cocina" },
 		{ id: "carta", texto: "🥐 Carta" },
 		{ id: "mesas", texto: "🪑 QR de mesas" },
@@ -73,7 +86,7 @@ export default function Admin() {
 					<button onClick={salir} className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200">Salir</button>
 				</div>
 			</header>
-			{pestana === "pedidos" && <PanelPedidos alCaducar={salir} />}
+			{pestana === "barra" && <PanelPedidos alCaducar={salir} />}
 			{pestana === "cocina" && <PantallaCocina alCaducar={salir} />}
 			{pestana === "carta" && <GestionCarta esAdmin={usuario.rol === "admin"} />}
 			{pestana === "mesas" && <QrMesas esAdmin={usuario.rol === "admin"} />}

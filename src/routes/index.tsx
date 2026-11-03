@@ -25,6 +25,7 @@ export default function App() {
 					<Route path="/pedido/:codigo" element={<Seguimiento />} />
 					<Route path="/m/:token" element={<MesaQr />} />
 					<Route path="/admin" element={<Admin />} />
+					<Route path="/admin/:pestana/*" element={<Admin />} />
 					<Route path="*" element={<p className="text-center py-24 text-gray-600">Página no encontrada</p>} />
 				</Routes>
 			</main>
