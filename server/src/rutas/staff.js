@@ -7,7 +7,15 @@ import path from "node:path";
 import bcrypt from "bcryptjs";
 import { query } from "../db.js";
 import { config } from "../config.js";
-import { esquemaEstado, esquemaLogin, esquemaNegocio, esquemaProducto, validar } from "../esquemas.js";
+import {
+	esquemaEstado,
+	esquemaLogin,
+	esquemaMesaCambio,
+	esquemaMesaNueva,
+	esquemaNegocio,
+	esquemaProducto,
+	validar,
+} from "../esquemas.js";
 import { cambiarEstado, pedidosDelPanel } from "../pedidos-servicio.js";
 import { abrirSSE, suscribirPanel } from "../eventos.js";
 import { estadoTpv, sincronizarAhora } from "../tpv/index.js";
@@ -73,8 +81,14 @@ export default async function rutasStaff(app) {
 			return { ok: true };
 		});
 
+		// Mesas (activas e inactivas) con cuántos pedidos tienen en curso
 		privado.get("/admin/mesas", async () => {
-			const { rows } = await query("SELECT numero, nombre, token FROM mesas WHERE activa ORDER BY numero");
+			const { rows } = await query(
+				`SELECT m.numero, m.nombre, m.token, m.activa,
+				        (SELECT count(*)::int FROM pedidos p
+				         WHERE p.mesa_numero = m.numero AND p.estado IN ('nuevo','preparando','listo')) AS pedidos_en_curso
+				 FROM mesas m ORDER BY m.numero`,
+			);
 			return rows;
 		});
 
@@ -120,6 +134,50 @@ export default async function rutasStaff(app) {
 				} catch (err) {
 					return reply.code(409).send({ error: err.message });
 				}
+			});
+
+			// Añadir una mesa (número libre siguiente si no se indica). Si existía desactivada, se reactiva.
+			admin.post("/admin/mesas", async (request, reply) => {
+				const { numero, nombre } = validar(esquemaMesaNueva, request.body);
+				const { rows } = await query(
+					`INSERT INTO mesas (numero, nombre)
+					 VALUES (COALESCE($1, (SELECT COALESCE(max(numero), 0) + 1 FROM mesas)), $2)
+					 ON CONFLICT (numero) DO UPDATE
+					   SET activa = true, nombre = COALESCE(NULLIF($2, ''), mesas.nombre)
+					 RETURNING numero, nombre, token, activa`,
+					[numero ?? null, nombre ?? ""],
+				);
+				const mesa = rows[0];
+				if (!mesa.nombre) {
+					await query("UPDATE mesas SET nombre = $2 WHERE numero = $1", [mesa.numero, `Mesa ${mesa.numero}`]);
+					mesa.nombre = `Mesa ${mesa.numero}`;
+				}
+				return reply.code(201).send({ ...mesa, pedidos_en_curso: 0 });
+			});
+
+			// Renombrar o activar/desactivar una mesa
+			admin.patch("/admin/mesas/:numero", async (request, reply) => {
+				const numero = Number(request.params.numero);
+				const cambios = validar(esquemaMesaCambio, request.body);
+				if (cambios.activa === false) {
+					const { rows: enCurso } = await query(
+						`SELECT count(*)::int AS n FROM pedidos
+						 WHERE mesa_numero = $1 AND estado IN ('nuevo','preparando','listo')`,
+						[numero],
+					);
+					if (enCurso[0].n > 0) {
+						return reply.code(409).send({
+							error: `La mesa ${numero} tiene ${enCurso[0].n} pedido(s) en curso. Entrégalos antes de desactivarla.`,
+						});
+					}
+				}
+				const { rows } = await query(
+					`UPDATE mesas SET nombre = COALESCE($2, nombre), activa = COALESCE($3, activa)
+					 WHERE numero = $1 RETURNING numero, nombre, token, activa`,
+					[numero, cambios.nombre ?? null, cambios.activa ?? null],
+				);
+				if (!rows[0]) return reply.code(404).send({ error: "Mesa no encontrada" });
+				return { ...rows[0], pedidos_en_curso: 0 };
 			});
 
 			admin.put("/admin/negocio", async (request) => {

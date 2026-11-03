@@ -76,7 +76,7 @@ export default function Admin() {
 			{pestana === "pedidos" && <PanelPedidos alCaducar={salir} />}
 			{pestana === "cocina" && <PantallaCocina alCaducar={salir} />}
 			{pestana === "carta" && <GestionCarta esAdmin={usuario.rol === "admin"} />}
-			{pestana === "mesas" && <QrMesas />}
+			{pestana === "mesas" && <QrMesas esAdmin={usuario.rol === "admin"} />}
 		</div>
 	);
 }
