@@ -1,6 +1,7 @@
 // Estrellas, formulario de opinión y tarjeta de opinión (portada y seguimiento del pedido)
 import { useId, useState, type FormEvent } from "react";
 import { BadgeCheck, Star } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 
 export interface Opinion {
@@ -103,11 +104,15 @@ export function FormularioOpinion({
 			<input type="text" name="web" value={web} onChange={(e) => setWeb(e.target.value)} tabIndex={-1} autoComplete="off"
 				aria-hidden="true" className="absolute -left-[9999px] w-px h-px opacity-0" />
 			{mensaje && <p className="text-sm font-semibold text-red-700" role="alert">{mensaje}</p>}
+			<p className="text-xs text-tinta/65">
+				Al enviar tu opinión, consientes su publicación tras nuestra revisión. Se mostrarán tu nombre, valoración y comentario, no tus datos de contacto.{" "}
+				<Link to="/privacidad" target="_blank" rel="noopener noreferrer"
+					className="font-semibold text-delicias underline underline-offset-2">Política de privacidad</Link>.
+			</p>
 			<button disabled={estado === "enviando"}
 				className="self-start bg-delicias text-white font-bold px-6 py-3 rounded-xl hover:bg-delicias-oscuro disabled:opacity-60 transition-colors">
 				{estado === "enviando" ? "Enviando…" : "Enviar opinión"}
 			</button>
-			<p className="text-xs text-tinta/55">Revisamos cada opinión antes de publicarla. Se mostrará tu nombre, no tus datos de contacto.</p>
 		</form>
 	);
 }

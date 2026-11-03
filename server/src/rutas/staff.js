@@ -208,7 +208,7 @@ export default async function rutasStaff(app) {
 			admin.put("/admin/negocio", async (request) => {
 				const datos = validar(esquemaNegocio, request.body);
 				const { rows } = await query(
-					"UPDATE negocio SET datos = $1 WHERE id = 1 RETURNING datos, updated_at",
+					"UPDATE negocio SET datos = datos || $1::jsonb WHERE id = 1 RETURNING datos, updated_at",
 					[datos],
 				);
 				return { ...rows[0].datos, actualizado: rows[0].updated_at };

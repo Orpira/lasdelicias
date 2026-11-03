@@ -6,6 +6,9 @@ import Pedido from "../pages/Pedido";
 import Seguimiento from "../pages/Seguimiento";
 import MesaQr from "../pages/MesaQr";
 import Admin from "../pages/Admin";
+import AvisoLegal from "../pages/legal/AvisoLegal";
+import Privacidad from "../pages/legal/Privacidad";
+import Cookies from "../pages/legal/Cookies";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { CarritoProvider } from "../lib/carrito";
@@ -31,6 +34,9 @@ export default function App() {
 					<Route path="/pedido" element={<Pedido />} />
 					<Route path="/pedido/:codigo" element={<Seguimiento />} />
 					<Route path="/m/:token" element={<MesaQr />} />
+					<Route path="/aviso-legal" element={<AvisoLegal />} />
+					<Route path="/privacidad" element={<Privacidad />} />
+					<Route path="/cookies" element={<Cookies />} />
 					<Route path="/admin" element={<Admin />} />
 					<Route path="/admin/:pestana/*" element={<Admin />} />
 					<Route path="*" element={<p className="text-center py-24 text-gray-600">Página no encontrada</p>} />

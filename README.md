@@ -51,6 +51,18 @@ Las etiquetas se centralizan en `src/lib/mesa.ts`. El QR guarda también el nomb
 
 Pruebas de las etiquetas: `node --experimental-strip-types --test src/lib/mesa.test.js`.
 
+## Privacidad y almacenamiento
+
+- `/aviso-legal`, `/privacidad` y `/cookies` leen la ficha pública del negocio y están enlazadas en el pie de página. Los datos legales desconocidos se muestran como `[Pendiente: …]`, nunca se deducen del nombre comercial.
+- Google Maps solo se inserta después de pulsar «Ver mapa»; «Cómo llegar» sigue abriendo el servicio externo. La fuente Bricolage Grotesque se sirve localmente, sin Google Fonts.
+- Nombre y teléfono solo se recuerdan si se marca la casilla al enviar el pedido; enviar otro pedido sin marcarla elimina ese recordatorio. El resto del almacenamiento técnico y sus duraciones reales se detallan en `/cookies`, sin analítica ni publicidad.
+
+La migración `server/migrations/006_datos_legales.sql` añade `titular`, `nif` y `email_contacto` como datos pendientes, y `conservacion_meses` con valor inicial 12, sin sobrescribir valores existentes. Completa la ficha mediante SQL o `PUT /admin/negocio` (requiere la ficha completa; los campos legales opcionales omitidos se conservan). El email debe ser válido y el plazo, un entero de 1 a 60 meses; `null` en el plazo aplica los 12 meses por defecto.
+
+Antes de publicar, completa el titular, NIF, email de contacto, los datos registrales si proceden y el nombre del encargado del tratamiento en la política de privacidad. Domicilio y teléfono proceden de la ficha y también muestran un hueco si faltan. Revisa los textos legales con los datos y servicios realmente contratados.
+
+La API ejecuta la anonimización un minuto después de arrancar y cada 24 horas. Vacía los datos personales de pedidos antiguos, incluida la relación `cliente_id` para evitar reidentificar desde la ficha del cliente, y elimina clientes sin pedidos recientes. Conserva los productos, importes y opiniones. La operación es transaccional e idempotente, registra recuentos sin datos personales y termina antes de cerrar el pool al apagar. El plazo se consulta en cada ejecución. Revisa también la retención de copias de seguridad y de automatizaciones externas, que no modifica esta tarea.
+
 ## Favicon e iconos móviles
 
 El favicon y los iconos de inicio usan el logo original de `public/logo.webp`, centrado sobre su fondo granate y sin recortes. `index.html` enlaza el favicon ICO/PNG, el icono de Apple de 180 × 180 y `public/site.webmanifest`, que declara los iconos Android de 192 y 512 píxeles y una variante adaptable con margen seguro.

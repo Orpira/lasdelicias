@@ -9,6 +9,7 @@ import { idDispositivo } from "../lib/dispositivo";
 import { etiquetaMesa } from "../lib/mesa";
 
 const CLAVE_MIS_PEDIDOS = "delicias.misPedidos";
+const CLAVE_CLIENTE = "delicias.cliente";
 
 function recordarPedido(codigo: string) {
 	try {
@@ -19,22 +20,35 @@ function recordarPedido(codigo: string) {
 	}
 }
 
-function leerDatosCliente() {
+function leerDatosCliente(): { nombre: string; telefono: string } | null {
 	try {
-		return JSON.parse(localStorage.getItem("delicias.cliente") ?? "{}") as { nombre?: string; telefono?: string };
-	} catch {
-		return {};
+		const guardado = localStorage.getItem(CLAVE_CLIENTE);
+		if (guardado === null) return null;
+		const datos: unknown = JSON.parse(guardado);
+		if (typeof datos !== "object" || datos === null || Array.isArray(datos)) {
+			throw new Error("Formato de datos del cliente no válido");
+		}
+		const nombre = "nombre" in datos ? datos.nombre : "";
+		const telefono = "telefono" in datos ? datos.telefono : "";
+		if (typeof nombre !== "string" || typeof telefono !== "string") {
+			throw new Error("Formato de datos del cliente no válido");
+		}
+		return { nombre, telefono };
+	} catch (error) {
+		console.warn("No se pudieron leer los datos recordados del cliente", error);
+		return null;
 	}
 }
 
 export default function Pedido() {
 	const carrito = useCarrito();
 	const navigate = useNavigate();
-	const guardado = leerDatosCliente();
+	const [guardado] = useState(leerDatosCliente);
 
 	const [tipo, setTipo] = useState<"mesa" | "recoger">(carrito.mesa ? "mesa" : "recoger");
-	const [nombre, setNombre] = useState(guardado.nombre ?? "");
-	const [telefono, setTelefono] = useState(guardado.telefono ?? "");
+	const [nombre, setNombre] = useState(guardado?.nombre ?? "");
+	const [telefono, setTelefono] = useState(guardado?.telefono ?? "");
+	const [recordarDatos, setRecordarDatos] = useState(guardado !== null);
 	const [cuando, setCuando] = useState<"ya" | "hora">("ya");
 	const [horaElegida, setHoraElegida] = useState("");
 	const [notas, setNotas] = useState("");
@@ -84,9 +98,10 @@ export default function Pedido() {
 				},
 			});
 			try {
-				localStorage.setItem("delicias.cliente", JSON.stringify({ nombre, telefono }));
-			} catch {
-				/* ignorar */
+				if (recordarDatos) localStorage.setItem(CLAVE_CLIENTE, JSON.stringify({ nombre, telefono }));
+				else localStorage.removeItem(CLAVE_CLIENTE);
+			} catch (error) {
+				console.warn("El pedido se ha enviado, pero no se pudieron actualizar los datos recordados del cliente", error);
 			}
 			recordarPedido(pedido.codigo);
 			carrito.vaciar();
@@ -156,6 +171,12 @@ export default function Pedido() {
 						className="border rounded-lg px-3 py-2 bg-white" autoComplete="tel" placeholder="600 123 456" />
 				</label>
 
+				<label className="flex items-start gap-3 text-sm text-tinta/80">
+					<input type="checkbox" checked={recordarDatos} onChange={(e) => setRecordarDatos(e.target.checked)}
+						className="mt-0.5 w-5 h-5 shrink-0 accent-delicias" />
+					<span>Recordar mi nombre y teléfono en este dispositivo</span>
+				</label>
+
 				{tipo === "recoger" && (
 					<fieldset className="flex flex-col gap-2">
 						<legend className="text-sm font-semibold mb-1">¿Cuándo lo recoges?</legend>
@@ -179,7 +200,9 @@ export default function Pedido() {
 				</label>
 
 				<p className="text-xs text-gray-500">
-					Usaremos tu nombre y teléfono solo para preparar este pedido y avisarte cuando esté listo.
+					Usaremos tu nombre y teléfono solo para preparar este pedido y avisarte cuando esté listo.{" "}
+					<Link to="/privacidad" target="_blank" rel="noopener noreferrer"
+						className="font-semibold text-delicias underline underline-offset-2">Política de privacidad</Link>.
 				</p>
 
 				{error && <p className="text-red-600 font-semibold" role="alert">{error}</p>}

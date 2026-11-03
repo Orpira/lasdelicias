@@ -4,6 +4,10 @@ import { api } from "./api";
 
 export interface Negocio {
 	nombre: string;
+	titular?: string | null;
+	nif?: string | null;
+	email_contacto?: string | null;
+	conservacion_meses?: number | null;
 	lema: string;
 	descripcion: string;
 	direccion: string;
@@ -28,15 +32,17 @@ export const DIAS: { clave: keyof Negocio["horario"]; nombre: string }[] = [
 
 let cache: Promise<Negocio> | null = null;
 
-export function useNegocio() {
+export function useNegocio(alError?: (mensaje: string) => void) {
 	const [negocio, setNegocio] = useState<Negocio | null>(null);
 	useEffect(() => {
 		cache ??= api<Negocio>("/negocio").catch((e) => {
 			cache = null;
 			throw e;
 		});
-		cache.then(setNegocio).catch(() => {});
-	}, []);
+		cache.then(setNegocio).catch((error: unknown) => {
+			alError?.(error instanceof Error ? error.message : "No se pudo cargar la ficha del negocio");
+		});
+	}, [alError]);
 	return negocio;
 }
 

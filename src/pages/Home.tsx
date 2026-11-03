@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import FotosPortada from "../components/FotosPortada";
 import IconoMarca from "../components/IconoMarca";
 import SeccionOpiniones from "../components/SeccionOpiniones";
+import MapaBajoDemanda from "../components/MapaBajoDemanda";
 import { useCarrito } from "../lib/carrito";
 import { DIAS, enlaceMapa, estadoHoy, telefonoLegible, useNegocio } from "../lib/negocio";
 import { useProductos } from "../lib/productos";
@@ -263,12 +264,11 @@ export default function Home() {
 							<p className="mt-4 text-tinta/60">Cargando información…</p>
 						)}
 					</div>
-					<iframe
-						src="https://maps.google.com/maps?q=Calle%20Ayala%2C%2028%2C%2029002%20M%C3%A1laga&output=embed"
-						className="w-full min-h-80 rounded-2xl border-0"
-						loading="lazy"
-						title="Mapa de Las Delicias en Calle Ayala, 28, Málaga"
-					/>
+					{negocio ? <MapaBajoDemanda direccion={negocio.direccion} /> : (
+						<div className="min-h-[20rem] rounded-2xl bg-merengue flex items-center justify-center text-tinta/60" role="status">
+							Cargando dirección…
+						</div>
+					)}
 				</div>
 			</section>
 		</main>

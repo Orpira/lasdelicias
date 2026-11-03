@@ -95,6 +95,10 @@ export const esquemaStockExterno = z.object({
 const dia = z.string().trim().max(40).nullable();
 export const esquemaNegocio = z.object({
 	nombre: z.string().trim().min(1).max(80),
+	titular: z.string().trim().min(1).max(160).nullable().optional(),
+	nif: z.string().trim().min(1).max(30).nullable().optional(),
+	email_contacto: z.email().max(254).nullable().optional(),
+	conservacion_meses: z.number().int().min(1).max(60).nullable().optional(),
 	lema: z.string().trim().max(80).default(""),
 	descripcion: z.string().trim().max(600).default(""),
 	direccion: z.string().trim().max(150),

@@ -8,6 +8,7 @@ import { pool } from "./db.js";
 import { migrar } from "./migrate.js";
 import { iniciarEscucha } from "./eventos.js";
 import { iniciarSincronizacionTpv } from "./tpv/index.js";
+import { iniciarAnonimizacion } from "./privacidad.js";
 import rutasPublicas from "./rutas/publicas.js";
 import rutasStaff from "./rutas/staff.js";
 import rutasN8n from "./rutas/n8n.js";
@@ -64,10 +65,12 @@ await app.register(rutasN8n);
 await migrar();
 const pararEscucha = iniciarEscucha(app.log);
 const pararTpv = iniciarSincronizacionTpv(app.log);
+const pararAnonimizacion = iniciarAnonimizacion(app.log);
 
 async function apagar(senal) {
 	app.log.info(`${senal} recibido, cerrando…`);
 	pararTpv();
+	await pararAnonimizacion();
 	await pararEscucha();
 	await app.close();
 	await pool.end();
