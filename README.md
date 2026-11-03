@@ -52,6 +52,12 @@ El favicon y los iconos de inicio usan el logo original de `public/logo.webp`, c
 
 Estos iconos no añaden funcionamiento sin conexión.
 
+## Fotos de la portada
+
+Junto a «Pan, pasteles y comida casera en Calle Ayala», la foto de la vitrina alterna con la del interior de la cafetería cada cinco segundos, con una transición suave. Los controles permiten elegir una foto y pausar o reanudar la rotación. Se pausa mientras hay foco o el puntero está sobre las fotos; no cambia de foto en una pestaña oculta ni se inicia automáticamente si se prefiere movimiento reducido.
+
+La foto del interior aportada para la web está optimizada en `public/interior-cafeteria.webp`; se conserva completa y se encuadra al mostrarla en la portada.
+
 ## Vitrina de la portada
 
 «Hoy en la vitrina» muestra la pastelería disponible en un carrusel horizontal con flechas laterales y desplazamiento táctil. Las flechas avanzan una tarjeta y se desactivan en los extremos o cuando todos los productos caben. El desplazamiento respeta la preferencia de movimiento reducido y mantiene los botones para añadir productos al pedido.

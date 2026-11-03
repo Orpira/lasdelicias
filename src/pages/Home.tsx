@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import FotosPortada from "../components/FotosPortada";
 import IconoMarca from "../components/IconoMarca";
 import SeccionOpiniones from "../components/SeccionOpiniones";
 import { useCarrito } from "../lib/carrito";
@@ -87,8 +88,7 @@ export default function Home() {
 						</div>
 					</div>
 
-					<img src="/demo/vitrina-dulces.webp" alt="La vitrina de Las Delicias con suizos, pasteles de naranja y tartas"
-						className="w-full aspect-[4/3] object-cover rounded-2xl" />
+					<FotosPortada />
 				</div>
 			</section>
 
