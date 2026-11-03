@@ -1,13 +1,17 @@
+@import "@fontsource-variable/bricolage-grotesque/standard.css";
+@import "@fontsource/caveat/600.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-	font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-	line-height: 1.5;
+	font-family: "Bricolage Grotesque Variable", system-ui, sans-serif;
+	font-optical-sizing: auto;
+	line-height: 1.55;
 	color-scheme: light;
-	color: #3e2723;
-	background-color: #fffaf5;
+	color: #2b1a1f;
+	background-color: #ffffff;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
@@ -27,9 +31,29 @@ a {
 }
 
 button:focus-visible,
-a:focus-visible {
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
 	outline: 3px solid #c70041;
 	outline-offset: 2px;
+}
+
+/* Barra de categorías desplazable sin barra visible */
+.sin-scrollbar {
+	scrollbar-width: none;
+}
+.sin-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
 }
 
 @media print {

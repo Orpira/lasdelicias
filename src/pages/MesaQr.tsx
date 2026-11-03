@@ -3,6 +3,7 @@
 // - Si el móvil tiene pedidos en curso en otra mesa, pregunta si se ha cambiado
 import { useEffect, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
+import { Armchair, ArrowLeftRight } from "lucide-react";
 import { api } from "../lib/api";
 import { useCarrito } from "../lib/carrito";
 import { idDispositivo } from "../lib/dispositivo";
@@ -54,7 +55,7 @@ export default function MesaQr() {
 	if (estado === "error") {
 		return (
 			<div className="max-w-md mx-auto text-center py-24 px-4">
-				<p className="text-5xl mb-4">🪑</p>
+				<Armchair className="w-12 h-12 mx-auto mb-4 text-delicias/50" aria-hidden="true" />
 				<p className="text-gray-700">{error || "Este código de mesa no es válido."}</p>
 				<p className="text-gray-500 mt-2">Pide ayuda al personal.</p>
 			</div>
@@ -64,9 +65,9 @@ export default function MesaQr() {
 	const previos = mesa!.pedidos_en_otra_mesa;
 	const mesaAnterior = previos[0].mesa_numero;
 	return (
-		<div className="max-w-md mx-auto py-16 px-4 text-center text-gray-800">
-			<p className="text-5xl mb-4">🔄</p>
-			<h1 className="text-2xl font-bold mb-3">¿Te has cambiado a la mesa {mesa!.numero}?</h1>
+		<div className="max-w-md mx-auto py-16 px-4 text-center text-tinta">
+			<ArrowLeftRight className="w-12 h-12 mx-auto mb-4 text-delicias" aria-hidden="true" />
+			<h1 className="text-3xl font-extrabold tracking-titular mb-3">¿Te has cambiado a la mesa {mesa!.numero}?</h1>
 			<p className="text-gray-600 mb-8">
 				Tienes {previos.length === 1 ? "un pedido en curso" : `${previos.length} pedidos en curso`} (
 				{previos.map((p) => `#${p.numero_dia}`).join(", ")}) en la <b>mesa {mesaAnterior}</b>.

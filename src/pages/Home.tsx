@@ -1,138 +1,231 @@
 import { Link } from "react-router-dom";
-import { DIAS, telefonoLegible, useNegocio } from "../lib/negocio";
+import Etiqueta from "../components/Etiqueta";
+import IconoMarca from "../components/IconoMarca";
+import SeccionOpiniones from "../components/SeccionOpiniones";
 import { useCarrito } from "../lib/carrito";
+import { DIAS, enlaceMapa, estadoHoy, telefonoLegible, useNegocio } from "../lib/negocio";
+import { useProductos } from "../lib/productos";
+import { euros } from "../lib/api";
 
-const destacados = [
-	{ img: "/demo/comida-casera.webp", titulo: "Comida casera para llevar", texto: "El menú de hoy: albóndigas, guisos, arroces, ensaladilla… recién hecho cada día." },
-	{ img: "/demo/vitrina-dulces.webp", titulo: "Pastelería del obrador", texto: "Palmeras rellenas, suizos, éclairs, tartas de queso, de manzana y por encargo." },
-	{ img: "/demo/cafe-con-leche.webp", titulo: "Café y desayunos", texto: "Café, tostadas, arepas y bollería recién hecha desde primera hora." },
-	{ img: "/demo/bunuelos-natilla.webp", titulo: "Sabores de casa", texto: "Natilla con buñuelos y otras recetas tradicionales en temporada." },
-];
-
-const comoFunciona = [
-	{ icono: "📱", titulo: "Pide desde el móvil", texto: "Escanea el QR de tu mesa o entra en la carta y elige." },
-	{ icono: "👩‍🍳", titulo: "Lo preparamos", texto: "Tu pedido llega al momento a la barra, sin colas." },
-	{ icono: "🔔", titulo: "Te avisamos", texto: "Sigue el estado en directo y recoge cuando esté listo." },
+const PASOS = [
+	{ titulo: "Elige", texto: "Escanea el QR de tu mesa o abre la carta desde casa." },
+	{ titulo: "Pide", texto: "Para tomar aquí o para recoger a la hora que te venga bien." },
+	{ titulo: "Te avisamos", texto: "Sigues tu pedido en directo y sabes cuándo está listo." },
 ];
 
 export default function Home() {
 	const negocio = useNegocio();
-	const { mesa } = useCarrito();
+	const { productos } = useProductos();
+	const carrito = useCarrito();
+
+	const estado = negocio ? estadoHoy(negocio.horario) : null;
+	const vitrina = (productos ?? []).filter((p) => p.disponible && p.imagen_url && p.categoria === "Pastelería");
+	const menuHoy = (productos ?? []).filter((p) => p.disponible && p.categoria === "Comida casera");
 	const whatsapp = negocio?.whatsapp.replace(/\D/g, "");
 
 	return (
-		<main className="font-sans text-[#3e2723] bg-[#fffaf5]">
-			{/* Portada */}
-			<section className="relative overflow-hidden">
-				<div className="absolute inset-0 bg-gradient-to-b from-delicias-claro via-[#fffaf5] to-[#fffaf5]" />
-				<div className="relative max-w-6xl mx-auto px-4 py-10 sm:py-16 grid md:grid-cols-2 gap-10 items-center">
-					<div className="text-center md:text-left">
-						<img src="/logo-las-delicias.webp" alt="Cafetería ~ Panadería Las Delicias"
-							className="w-72 sm:w-80 mx-auto md:mx-0 rounded-2xl shadow-lg" />
-						<p className="text-lg sm:text-xl mt-6 text-gray-700">
-							{negocio?.descripcion ?? "Panadería, pastelería, cafetería y obrador artesano en el centro de Málaga."}
+		<main className="text-tinta">
+			{/* Portada: el rótulo granate y la vitrina */}
+			<section className="bg-delicias text-white overflow-hidden">
+				<div className="max-w-6xl mx-auto px-5 pt-10 pb-14 md:py-20 grid md:grid-cols-[1.05fr_1fr] gap-10 md:gap-14 items-center">
+					<div>
+						{estado && (
+							<p className="inline-flex items-center gap-2 text-sm font-semibold bg-white/10 rounded-full px-3 py-1 mb-6">
+								<span className={`w-2 h-2 rounded-full ${estado.abierto ? "bg-[#7CF0A6]" : "bg-white/50"}`} />
+								{estado.texto}
+							</p>
+						)}
+						<h1 className="text-[2.6rem] leading-[1.02] sm:text-6xl font-extrabold tracking-titular">
+							Pan, pasteles y comida casera en Calle Ayala
+						</h1>
+						<p className="mt-5 text-lg sm:text-xl text-white/85 max-w-[34rem]">
+							Pide desde el móvil, en la mesa o para recoger, y te avisamos cuando esté listo. A cinco minutos andando de María Zambrano.
 						</p>
-						<div className="flex flex-wrap gap-3 mt-8 justify-center md:justify-start">
-							<Link to="/menu" className="bg-delicias text-white px-7 py-3 rounded-xl font-bold shadow-lg hover:bg-delicias-oscuro transition text-lg">
-								{mesa ? `Pedir en la mesa ${mesa}` : "Pedir ahora"}
+						<div className="mt-8 flex flex-wrap gap-3">
+							<Link to="/menu"
+								className="bg-white text-delicias-profundo font-bold text-lg px-6 py-3.5 rounded-xl hover:bg-merengue transition-colors">
+								{carrito.mesa ? `Pedir en la mesa ${carrito.mesa}` : "Ver la carta y pedir"}
 							</Link>
 							{negocio && (
-								<a href={`tel:${negocio.telefono}`} className="bg-white text-delicias border-2 border-delicias px-7 py-3 rounded-xl font-bold hover:bg-delicias-claro transition text-lg">
-									Llamar · {telefonoLegible(negocio.telefono)}
+								<a href={enlaceMapa(negocio.direccion)} target="_blank" rel="noopener noreferrer"
+									className="font-bold text-lg px-6 py-3.5 rounded-xl border-2 border-white/40 hover:border-white transition-colors">
+									Cómo llegar
 								</a>
 							)}
 						</div>
 					</div>
-					<div className="grid grid-cols-2 gap-3">
-						<img src="/demo/local.webp" alt="Interior del local" className="row-span-2 w-full h-full object-cover rounded-2xl shadow-md" />
-						<img src="/demo/cafe-y-bizcocho.webp" alt="Café con bizcocho casero" className="w-full aspect-square object-cover rounded-2xl shadow-md" />
-						<img src="/demo/vitrina.webp" alt="Vitrina de tartas" className="w-full aspect-square object-cover rounded-2xl shadow-md" />
+
+					<figure className="relative">
+						<img src="/demo/vitrina-dulces.webp" alt="La vitrina de Las Delicias con suizos, pasteles de naranja y tartas"
+							className="w-full aspect-[4/3] object-cover rounded-2xl" />
+						<Etiqueta texto="Palmeras rellenas" precio={2.6} giro={0}
+							className="absolute -top-4 right-6 text-2xl" />
+						<Etiqueta texto="Natilla y buñuelos" precio={5} giro={1}
+							className="absolute -bottom-5 left-5 text-2xl" />
+					</figure>
+				</div>
+			</section>
+
+			{/* Hoy en la vitrina: productos reales con su precio */}
+			<section className="max-w-6xl mx-auto px-5 pt-16 pb-12">
+				<div className="flex items-end justify-between gap-4 mb-6">
+					<div>
+						<h2 className="text-3xl sm:text-4xl font-extrabold tracking-titular">Hoy en la vitrina</h2>
+						<p className="text-tinta/70 mt-1">Hecho en nuestro obrador. Añádelo y lo tendrás listo al llegar.</p>
+					</div>
+					<Link to="/menu?categoria=Pastelería" className="hidden sm:inline font-bold text-delicias hover:text-delicias-profundo whitespace-nowrap">
+						Toda la pastelería
+					</Link>
+				</div>
+				<div className="flex gap-5 overflow-x-auto sin-scrollbar snap-x pb-4 -mx-5 px-5">
+					{productos === null &&
+						Array.from({ length: 4 }, (_, i) => <div key={i} className="shrink-0 w-56 h-72 rounded-2xl bg-merengue animate-pulse" />)}
+					{vitrina.map((p, i) => {
+						const cantidad = carrito.cantidadDe(p.id);
+						return (
+							<article key={p.id} className="snap-start shrink-0 w-56">
+								<div className="relative">
+									<img src={p.imagen_url} alt={p.nombre} loading="lazy" className="w-56 h-56 object-cover rounded-2xl" />
+									<Etiqueta precio={p.precio} giro={i} className="absolute top-3 left-3 text-xl" />
+									<button
+										onClick={() => carrito.cambiar(p, 1)}
+										aria-label={`Añadir ${p.nombre}`}
+										className="absolute bottom-3 right-3 h-11 min-w-11 px-3 rounded-full bg-white text-delicias font-extrabold text-lg shadow-md hover:bg-merengue">
+										{cantidad > 0 ? `${cantidad} en tu pedido` : "+"}
+									</button>
+								</div>
+								<h3 className="mt-3 font-bold leading-snug">{p.nombre}</h3>
+								<p className="text-sm text-tinta/65 leading-snug">{p.descripcion}</p>
+							</article>
+						);
+					})}
+				</div>
+			</section>
+
+			{/* Comida casera para llevar */}
+			<section className="bg-merengue">
+				<div className="max-w-6xl mx-auto px-5 py-16 grid md:grid-cols-2 gap-10 items-center">
+					<img src="/demo/comida-casera.webp" alt="Albóndigas, ensaladilla, arroz y tortitas en la vitrina de comida casera"
+						className="w-full aspect-[5/4] object-cover rounded-2xl order-last md:order-first" loading="lazy" />
+					<div>
+						<h2 className="text-3xl sm:text-4xl font-extrabold tracking-titular">Comida casera para llevar</h2>
+						<p className="mt-3 text-lg text-tinta/75 max-w-[32rem]">
+							Cada día cocinamos guisos, albóndigas, arroces y ensaladilla. Encárgalo para la hora que quieras y recógelo sin hacer cola.
+						</p>
+						{menuHoy.length > 0 && (
+							<ul className="mt-6 divide-y divide-delicias/15 border-y border-delicias/15">
+								{menuHoy.slice(0, 6).map((p) => (
+									<li key={p.id} className="flex items-baseline justify-between gap-4 py-2.5">
+										<span className="font-semibold">{p.nombre}</span>
+										<span className="font-bold text-delicias tabular-nums">{euros(p.precio)}</span>
+									</li>
+								))}
+							</ul>
+						)}
+						<Link to="/menu?categoria=Comida casera"
+							className="inline-block mt-7 bg-delicias text-white font-bold text-lg px-6 py-3.5 rounded-xl hover:bg-delicias-oscuro transition-colors">
+							Encargar comida
+						</Link>
 					</div>
 				</div>
 			</section>
 
-			{/* Cómo funciona */}
-			<section className="max-w-6xl mx-auto px-4 py-12">
-				<h2 className="text-3xl font-bold text-center text-delicias mb-8">Pide sin esperar</h2>
-				<div className="grid sm:grid-cols-3 gap-6">
-					{comoFunciona.map((p) => (
-						<div key={p.titulo} className="bg-white rounded-2xl shadow p-6 text-center border border-delicias-claro">
-							<div className="text-4xl mb-3">{p.icono}</div>
-							<h3 className="font-bold text-lg mb-1">{p.titulo}</h3>
-							<p className="text-gray-600">{p.texto}</p>
-						</div>
-					))}
-				</div>
-			</section>
-
-			{/* Destacados */}
-			<section className="max-w-6xl mx-auto px-4 pb-12">
-				<h2 className="text-3xl font-bold text-center text-delicias mb-8">Del obrador a tu mesa</h2>
-				<div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-					{destacados.map((d) => (
-						<article key={d.titulo} className="bg-white rounded-2xl shadow overflow-hidden">
-							<img src={d.img} alt={d.titulo} className="w-full h-48 object-cover" loading="lazy" />
-							<div className="p-5">
-								<h3 className="font-bold text-lg text-delicias">{d.titulo}</h3>
-								<p className="text-gray-600">{d.texto}</p>
+			{/* Cómo pedir: es una secuencia real, por eso numerada */}
+			<section className="max-w-6xl mx-auto px-5 py-16">
+				<h2 className="text-3xl sm:text-4xl font-extrabold tracking-titular mb-8">Pedir es así de fácil</h2>
+				<ol className="grid sm:grid-cols-3 gap-8">
+					{PASOS.map((p, i) => (
+						<li key={p.titulo} className="flex gap-4">
+							<span className="shrink-0 w-11 h-11 rounded-full border-2 border-delicias text-delicias font-extrabold text-lg flex items-center justify-center">
+								{i + 1}
+							</span>
+							<div>
+								<h3 className="font-bold text-lg">{p.titulo}</h3>
+								<p className="text-tinta/70">{p.texto}</p>
 							</div>
-						</article>
+						</li>
 					))}
+				</ol>
+			</section>
+
+			{/* Sabores de casa y encargos */}
+			<section className="max-w-6xl mx-auto px-5 pb-16">
+				<div className="grid md:grid-cols-[1fr_1.2fr] rounded-2xl overflow-hidden bg-delicias-profundo text-white">
+					<img src="/demo/bunuelos-natilla.webp" alt="Buñuelos con natilla" loading="lazy"
+						className="w-full h-64 md:h-full object-cover" />
+					<div className="p-8 sm:p-10 self-center">
+						<h2 className="text-3xl font-extrabold tracking-titular">Arepas, buñuelos y tartas por encargo</h2>
+						<p className="mt-3 text-white/80 text-lg max-w-[30rem]">
+							Recetas de casa todo el año y especiales en fiestas. Para cumpleaños y celebraciones, encarga tu tarta con unos días de antelación.
+						</p>
+						{whatsapp && (
+							<a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent("¡Hola! Quiero encargar una tarta para el día ")}`}
+								target="_blank" rel="noopener noreferrer"
+								className="inline-block mt-6 bg-white text-delicias-profundo font-bold px-6 py-3.5 rounded-xl hover:bg-merengue transition-colors">
+								Encargar por WhatsApp
+							</a>
+						)}
+					</div>
 				</div>
 			</section>
 
-			{/* Información y contacto */}
-			<section className="bg-white border-t border-delicias-claro">
-				<div className="max-w-6xl mx-auto px-4 py-12 grid md:grid-cols-2 gap-10">
+			<SeccionOpiniones resenasExternas={negocio?.resenas_externas ?? []} />
+
+			{/* Visítanos */}
+			<section className="border-t border-delicias/10">
+				<div className="max-w-6xl mx-auto px-5 py-16 grid md:grid-cols-2 gap-10">
 					<div>
-						<h2 className="text-3xl font-bold text-delicias mb-4">Visítanos</h2>
+						<h2 className="text-3xl sm:text-4xl font-extrabold tracking-titular">Visítanos</h2>
 						{negocio ? (
 							<>
-								<p className="text-lg font-semibold">{negocio.direccion}</p>
-								{negocio.referencia && <p className="text-gray-600 mb-4">{negocio.referencia}</p>}
-								<div className="flex flex-wrap gap-2 mb-6">
-									{negocio.servicios.map((s) => (
-										<span key={s} className="px-3 py-1 rounded-full bg-delicias-claro text-delicias text-sm font-semibold">{s}</span>
-									))}
-								</div>
-								<h3 className="font-bold mb-2">Horario</h3>
-								<table className="text-sm mb-6">
+								<p className="mt-4 text-xl font-semibold">{negocio.direccion}</p>
+								{negocio.referencia && <p className="text-tinta/70">{negocio.referencia}</p>}
+								<p className="mt-4 text-tinta/75">{negocio.servicios.join(", ")}.</p>
+
+								<table className="mt-6 text-sm w-full max-w-xs">
+									<caption className="text-left font-bold text-base mb-2">Horario</caption>
 									<tbody>
 										{DIAS.map((d) => (
-											<tr key={d.clave}>
-												<td className="pr-6 py-0.5">{d.nombre}</td>
-												<td className={negocio.horario[d.clave] ? "font-semibold" : "text-gray-400"}>
-													{negocio.horario[d.clave] ?? "Consultar"}
+											<tr key={d.clave} className="border-b border-delicias/10 last:border-0">
+												<td className="py-1.5">{d.nombre}</td>
+												<td className={`py-1.5 text-right tabular-nums ${negocio.horario[d.clave] ? "font-semibold" : "text-tinta/50"}`}>
+													{negocio.horario[d.clave] ?? "Consúltanos"}
 												</td>
 											</tr>
 										))}
 									</tbody>
 								</table>
-								<div className="flex flex-wrap gap-3">
+
+								<div className="mt-7 flex flex-wrap gap-3">
+									<a href={`tel:${negocio.telefono}`}
+										className="bg-delicias text-white font-bold px-5 py-3 rounded-xl hover:bg-delicias-oscuro transition-colors">
+										Llamar al {telefonoLegible(negocio.telefono)}
+									</a>
 									{whatsapp && (
-										<a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent("¡Hola! Quiero hacer un pedido a domicilio:")}`}
-											target="_blank" rel="noopener noreferrer"
-											className="bg-[#25D366] text-white px-5 py-2.5 rounded-xl font-bold hover:brightness-95">
-											Pedido a domicilio por WhatsApp
+										<a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer"
+											aria-label="Escríbenos por WhatsApp" title="WhatsApp"
+											className="w-12 h-12 rounded-xl border-2 border-delicias/25 text-delicias hover:border-delicias flex items-center justify-center transition-colors">
+											<IconoMarca marca="whatsapp" />
 										</a>
 									)}
 									{negocio.instagram && (
 										<a href={`https://instagram.com/${negocio.instagram}`} target="_blank" rel="noopener noreferrer"
-											className="bg-gradient-to-r from-[#f58529] via-[#dd2a7b] to-[#8134af] text-white px-5 py-2.5 rounded-xl font-bold hover:brightness-95">
-											@{negocio.instagram}
+											aria-label="Las Delicias en Instagram" title="Instagram"
+											className="w-12 h-12 rounded-xl border-2 border-delicias/25 text-delicias hover:border-delicias flex items-center justify-center transition-colors">
+											<IconoMarca marca="instagram" />
 										</a>
 									)}
 								</div>
 							</>
 						) : (
-							<p className="text-gray-500">Cargando información…</p>
+							<p className="mt-4 text-tinta/60">Cargando información…</p>
 						)}
 					</div>
 					<iframe
 						src="https://maps.google.com/maps?q=Calle%20Ayala%2C%2028%2C%2029002%20M%C3%A1laga&output=embed"
-						className="w-full h-80 md:h-full min-h-72 rounded-2xl border-0 shadow"
+						className="w-full min-h-80 rounded-2xl border-0"
 						loading="lazy"
-						title="Mapa de Las Delicias en Málaga"
+						title="Mapa de Las Delicias en Calle Ayala, 28, Málaga"
 					/>
 				</div>
 			</section>

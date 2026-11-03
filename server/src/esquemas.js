@@ -106,7 +106,22 @@ export const esquemaNegocio = z.object({
 	horario: z.object({
 		lunes: dia, martes: dia, miercoles: dia, jueves: dia, viernes: dia, sabado: dia, domingo: dia,
 	}),
+	// Fichas externas donde también se puede opinar (Páginas Amarillas, Google…)
+	resenas_externas: z
+		.array(z.object({ sitio: z.string().trim().min(1).max(40), url: z.url() }))
+		.max(5)
+		.default([]),
 });
+
+export const esquemaOpinion = z.object({
+	nombre: z.string().trim().min(1, "Escribe tu nombre").max(40),
+	puntuacion: z.number().int().min(1, "Elige de 1 a 5 estrellas").max(5),
+	comentario: z.string().trim().max(500, "Máximo 500 caracteres").default(""),
+	pedido_codigo: z.string().regex(/^[a-z0-9]{10}$/).optional(),
+	web: z.string().optional(), // campo trampa para bots: las personas no lo ven
+});
+
+export const esquemaEstadoOpinion = z.object({ estado: z.enum(["publicada", "oculta"]) });
 
 export const esquemaMesaNueva = z.object({
 	numero: z.number().int().min(1).max(999).optional(),

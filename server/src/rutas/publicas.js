@@ -4,7 +4,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { query } from "../db.js";
 import { config } from "../config.js";
-import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, tokenMesa, validar } from "../esquemas.js";
+import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, esquemaOpinion, tokenMesa, validar } from "../esquemas.js";
 import {
 	cambiarDeMesa,
 	crearPedido,
@@ -49,7 +49,7 @@ export default async function rutasPublicas(app) {
 	// El cliente confirma que se ha cambiado a esta mesa
 	app.post(
 		"/mesas/qr/:token/cambio",
-		{ config: { rateLimit: { max: 5, timeWindow: "10 minutes" } } },
+		{ config: { rateLimit: { max: 30, timeWindow: "10 minutes" } } },
 		async (request, reply) => {
 			if (!tokenMesa(request.params.token)) return reply.code(404).send({ error: "Mesa no encontrada" });
 			const { dispositivo } = validar(esquemaDispositivo, request.body);
@@ -62,7 +62,8 @@ export default async function rutasPublicas(app) {
 
 	app.post(
 		"/pedidos",
-		{ config: { rateLimit: { max: 8, timeWindow: "10 minutes" } } },
+		// Generoso: en el local muchos clientes comparten la IP pública del wifi
+		{ config: { rateLimit: { max: 60, timeWindow: "10 minutes" } } },
 		async (request, reply) => {
 			const datos = validar(esquemaNuevoPedido, request.body);
 			const pedido = await crearPedido({
@@ -82,8 +83,58 @@ export default async function rutasPublicas(app) {
 	app.get("/pedidos/:codigo", async (request, reply) => {
 		const pedido = await obtenerPedidoPorCodigo(String(request.params.codigo));
 		if (!pedido) return reply.code(404).send({ error: "Pedido no encontrado" });
-		return vistaPublica(pedido);
+		const { rows } = await query("SELECT 1 FROM opiniones WHERE pedido_codigo = $1", [pedido.codigo]);
+		return { ...vistaPublica(pedido), opinada: rows.length > 0 };
 	});
+
+	// Opiniones publicadas, en orden aleatorio, con la media y el total
+	app.get("/opiniones", async (request, reply) => {
+		const n = Math.min(12, Math.max(1, Number(request.query.n) || 3));
+		const [{ rows: opiniones }, { rows: [resumen] }] = await Promise.all([
+			query(
+				`SELECT id, nombre, puntuacion, comentario, verificada, created_at
+				 FROM opiniones WHERE estado = 'publicada' ORDER BY random() LIMIT $1`,
+				[n],
+			),
+			query(
+				`SELECT count(*)::int AS total, round(avg(puntuacion)::numeric, 1) AS media
+				 FROM opiniones WHERE estado = 'publicada'`,
+			),
+		]);
+		reply.header("Cache-Control", "no-store");
+		return { total: resumen.total, media: resumen.media, opiniones };
+	});
+
+	app.post(
+		"/opiniones",
+		{ config: { rateLimit: { max: 15, timeWindow: "30 minutes" } } },
+		async (request, reply) => {
+			const d = validar(esquemaOpinion, request.body);
+			const respuesta = { ok: true, mensaje: "¡Gracias! Publicaremos tu opinión en cuanto la revisemos." };
+			if (d.web) return reply.code(201).send(respuesta); // bot: se descarta en silencio
+
+			let verificada = false;
+			if (d.pedido_codigo) {
+				const { rows } = await query("SELECT estado FROM pedidos WHERE codigo = $1", [d.pedido_codigo]);
+				if (!rows[0]) return reply.code(404).send({ error: "Pedido no encontrado" });
+				if (!["listo", "entregado"].includes(rows[0].estado)) {
+					return reply.code(409).send({ error: "Podrás valorar tu pedido cuando te lo hayamos entregado" });
+				}
+				verificada = true;
+			}
+			try {
+				await query(
+					`INSERT INTO opiniones (nombre, puntuacion, comentario, pedido_codigo, verificada)
+					 VALUES ($1, $2, $3, $4, $5)`,
+					[d.nombre, d.puntuacion, d.comentario, d.pedido_codigo ?? null, verificada],
+				);
+			} catch (err) {
+				if (err.code === "23505") return reply.code(409).send({ error: "Ya has valorado este pedido. ¡Gracias!" });
+				throw err;
+			}
+			return reply.code(201).send(respuesta);
+		},
+	);
 
 	// Seguimiento en tiempo real para el cliente
 	app.get("/pedidos/:codigo/stream", async (request, reply) => {
@@ -96,7 +147,7 @@ export default async function rutasPublicas(app) {
 
 	app.post(
 		"/mesas/qr/:token/llamar",
-		{ config: { rateLimit: { max: 4, timeWindow: "5 minutes" } } },
+		{ config: { rateLimit: { max: 30, timeWindow: "5 minutes" } } },
 		async (request, reply) => {
 			if (!tokenMesa(request.params.token)) return reply.code(404).send({ error: "Mesa no encontrada" });
 			const { motivo } = validar(esquemaLlamada, request.body);

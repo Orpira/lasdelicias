@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, euros } from "../lib/api";
 import { useCarrito } from "../lib/carrito";
 import type { Pedido as TPedido } from "../types/producto";
+import { ShoppingBag } from "lucide-react";
 import { ErrorApi } from "../lib/api";
 import { idDispositivo } from "../lib/dispositivo";
 
@@ -41,9 +42,9 @@ export default function Pedido() {
 
 	if (carrito.lineas.length === 0) {
 		return (
-			<div className="max-w-xl mx-auto text-center py-24 px-4 text-gray-700">
-				<p className="text-5xl mb-4">🧺</p>
-				<h1 className="text-2xl font-bold mb-2">Tu pedido está vacío</h1>
+			<div className="max-w-xl mx-auto text-center py-24 px-5 text-tinta">
+				<ShoppingBag className="w-12 h-12 mx-auto mb-4 text-delicias/50" aria-hidden="true" />
+				<h1 className="text-3xl font-extrabold tracking-titular mb-2">Tu pedido está vacío</h1>
 				<p className="mb-6">Añade algo de la carta para empezar.</p>
 				<Link to="/menu" className="inline-block bg-delicias text-white px-6 py-3 rounded-xl font-bold hover:bg-delicias-oscuro">
 					Ver la carta
@@ -102,10 +103,10 @@ export default function Pedido() {
 	}
 
 	return (
-		<div className="max-w-xl mx-auto px-4 py-8 text-gray-800">
-			<h1 className="text-3xl font-bold text-center text-delicias mb-6">Tu pedido</h1>
+		<div className="max-w-xl mx-auto px-5 py-10 text-tinta">
+			<h1 className="text-4xl font-extrabold tracking-titular mb-6">Tu pedido</h1>
 
-			<ul className="bg-white rounded-2xl shadow divide-y mb-6">
+			<ul className="bg-white rounded-2xl border border-delicias/15 divide-y mb-6">
 				{carrito.lineas.map(({ producto, cantidad }) => (
 					<li key={producto.id} className="flex items-center gap-3 p-4">
 						<div className="flex-1">
@@ -126,16 +127,16 @@ export default function Pedido() {
 				</li>
 			</ul>
 
-			<form onSubmit={enviar} className="bg-white rounded-2xl shadow p-5 flex flex-col gap-4">
+			<form onSubmit={enviar} className="bg-white rounded-2xl border border-delicias/15 p-5 flex flex-col gap-4">
 				{carrito.mesa && (
 					<div className="grid grid-cols-2 gap-2">
 						<button type="button" onClick={() => setTipo("mesa")}
 							className={`py-3 rounded-xl font-semibold border-2 ${tipo === "mesa" ? "border-delicias bg-delicias-claro text-delicias" : "border-gray-200"}`}>
-							🪑 Servir en mesa {carrito.mesa}
+							Tomar en la mesa {carrito.mesa}
 						</button>
 						<button type="button" onClick={() => setTipo("recoger")}
 							className={`py-3 rounded-xl font-semibold border-2 ${tipo === "recoger" ? "border-delicias bg-delicias-claro text-delicias" : "border-gray-200"}`}>
-							🛍️ Para llevar
+							Para llevar
 						</button>
 					</div>
 				)}

@@ -5,6 +5,7 @@ import PanelPedidos from "../components/admin/PanelPedidos";
 import GestionCarta from "../components/admin/GestionCarta";
 import QrMesas from "../components/admin/QrMesas";
 import PantallaCocina from "../components/admin/PantallaCocina";
+import ModeracionOpiniones from "../components/admin/ModeracionOpiniones";
 
 export interface Usuario {
 	sub?: string;
@@ -14,7 +15,7 @@ export interface Usuario {
 }
 
 // Cada pestaña tiene su dirección: /admin/barra, /admin/cocina, /admin/carta, /admin/mesas
-const PESTANAS = ["barra", "cocina", "carta", "mesas"] as const;
+const PESTANAS = ["barra", "cocina", "carta", "mesas", "opiniones"] as const;
 type Pestana = (typeof PESTANAS)[number];
 const esPestana = (p: unknown): p is Pestana => PESTANAS.includes(p as Pestana);
 
@@ -68,6 +69,7 @@ export default function Admin() {
 		{ id: "cocina", texto: "👩‍🍳 Cocina" },
 		{ id: "carta", texto: "🥐 Carta" },
 		{ id: "mesas", texto: "🪑 QR de mesas" },
+		...(usuario.rol === "admin" ? [{ id: "opiniones" as const, texto: "⭐ Opiniones" }] : []),
 	];
 
 	return (
@@ -90,6 +92,7 @@ export default function Admin() {
 			{pestana === "cocina" && <PantallaCocina alCaducar={salir} />}
 			{pestana === "carta" && <GestionCarta esAdmin={usuario.rol === "admin"} />}
 			{pestana === "mesas" && <QrMesas esAdmin={usuario.rol === "admin"} />}
+			{pestana === "opiniones" && usuario.rol === "admin" && <ModeracionOpiniones />}
 		</div>
 	);
 }
