@@ -106,7 +106,7 @@ fi
 
 # 5. Arranque
 verde "→ Construyendo y arrancando contenedores"
-docker compose up -d --build
+docker compose up -d --build </dev/null
 
 printf "→ Esperando a la API"
 for _ in $(seq 1 60); do
@@ -119,7 +119,8 @@ curl -fs http://127.0.0.1:3001/health >/dev/null || { echo; rojo "La API no resp
 if [ -n "${ADMIN_EMAIL:-}" ]; then
 	if [ -t 0 ] || [ -e /dev/tty ]; then
 		read -r -s -p "Contraseña para $ADMIN_EMAIL (mín. 10 caracteres): " CLAVE < /dev/tty; echo
-		docker compose exec -T -e STAFF_PASSWORD="$CLAVE" api node scripts/crear-staff.js "$ADMIN_EMAIL" "${ADMIN_NOMBRE:-Administración}" admin
+		# </dev/null: con "curl | bash" el exec se quedaría leyendo el resto del script por stdin
+		docker compose exec -T -e STAFF_PASSWORD="$CLAVE" api node scripts/crear-staff.js "$ADMIN_EMAIL" "${ADMIN_NOMBRE:-Administración}" admin </dev/null
 		unset CLAVE
 	fi
 fi
