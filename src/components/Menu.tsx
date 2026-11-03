@@ -6,7 +6,6 @@ import { useCarrito } from "../lib/carrito";
 import { useProductos } from "../lib/productos";
 import { CATEGORIAS, type Categoria, type Producto } from "../types/producto";
 import BarraMesa from "./BarraMesa";
-import Etiqueta from "./Etiqueta";
 
 const esCategoria = (c: string | null): c is Categoria => CATEGORIAS.some((x) => x.nombre === c);
 
@@ -79,8 +78,8 @@ export default function Menu() {
 				)}
 
 				<ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8">
-					{visibles.map((p, i) => (
-						<FilaProducto key={p.id} producto={p} giro={i} />
+					{visibles.map((p) => (
+						<FilaProducto key={p.id} producto={p} />
 					))}
 				</ul>
 			</div>
@@ -102,7 +101,7 @@ export default function Menu() {
 	);
 }
 
-function FilaProducto({ producto: p, giro }: { producto: Producto; giro: number }) {
+function FilaProducto({ producto: p }: { producto: Producto }) {
 	const carrito = useCarrito();
 	const cantidad = carrito.cantidadDe(p.id);
 
@@ -110,10 +109,7 @@ function FilaProducto({ producto: p, giro }: { producto: Producto; giro: number 
 		<li className={`flex gap-4 py-5 border-b border-delicias/10 ${p.disponible ? "" : "opacity-55"}`}>
 			{/* Sin foto: fila de texto limpia (la foto se sube desde el panel) */}
 			{p.imagen_url && (
-				<div className="relative shrink-0">
-					<img src={p.imagen_url} alt="" loading="lazy" className="w-28 h-28 object-cover rounded-xl" />
-					{p.disponible && <Etiqueta precio={p.precio} giro={giro} className="absolute -bottom-2 -right-2 text-lg" />}
-				</div>
+				<img src={p.imagen_url} alt="" loading="lazy" className="shrink-0 w-28 h-28 object-cover rounded-xl" />
 			)}
 
 			<div className="flex-1 min-w-0 flex flex-col">
@@ -126,7 +122,7 @@ function FilaProducto({ producto: p, giro }: { producto: Producto; giro: number 
 				</div>
 
 				<div className="mt-auto pt-2 flex items-center justify-between gap-3">
-					<span className={`font-bold tabular-nums ${p.imagen_url ? "sr-only" : "text-delicias"}`}>{euros(p.precio)}</span>
+					<span className="font-bold text-lg text-delicias tabular-nums">{euros(p.precio)}</span>
 					{!p.disponible ? (
 						<span className="ml-auto text-sm font-semibold text-tinta/60">Agotado por hoy</span>
 					) : cantidad === 0 ? (

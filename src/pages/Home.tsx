@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import Etiqueta from "../components/Etiqueta";
 import IconoMarca from "../components/IconoMarca";
 import SeccionOpiniones from "../components/SeccionOpiniones";
 import { useCarrito } from "../lib/carrito";
@@ -55,14 +54,8 @@ export default function Home() {
 						</div>
 					</div>
 
-					<figure className="relative">
-						<img src="/demo/vitrina-dulces.webp" alt="La vitrina de Las Delicias con suizos, pasteles de naranja y tartas"
-							className="w-full aspect-[4/3] object-cover rounded-2xl" />
-						<Etiqueta texto="Palmeras rellenas" precio={2.6} giro={0}
-							className="absolute -top-4 right-6 text-2xl" />
-						<Etiqueta texto="Natilla y buñuelos" precio={5} giro={1}
-							className="absolute -bottom-5 left-5 text-2xl" />
-					</figure>
+					<img src="/demo/vitrina-dulces.webp" alt="La vitrina de Las Delicias con suizos, pasteles de naranja y tartas"
+						className="w-full aspect-[4/3] object-cover rounded-2xl" />
 				</div>
 			</section>
 
@@ -80,13 +73,12 @@ export default function Home() {
 				<div className="flex gap-5 overflow-x-auto sin-scrollbar snap-x pb-4 -mx-5 px-5">
 					{productos === null &&
 						Array.from({ length: 4 }, (_, i) => <div key={i} className="shrink-0 w-56 h-72 rounded-2xl bg-merengue animate-pulse" />)}
-					{vitrina.map((p, i) => {
+					{vitrina.map((p) => {
 						const cantidad = carrito.cantidadDe(p.id);
 						return (
 							<article key={p.id} className="snap-start shrink-0 w-56">
 								<div className="relative">
 									<img src={p.imagen_url} alt={p.nombre} loading="lazy" className="w-56 h-56 object-cover rounded-2xl" />
-									<Etiqueta precio={p.precio} giro={i} className="absolute top-3 left-3 text-xl" />
 									<button
 										onClick={() => carrito.cambiar(p, 1)}
 										aria-label={`Añadir ${p.nombre}`}
@@ -94,7 +86,10 @@ export default function Home() {
 										{cantidad > 0 ? `${cantidad} en tu pedido` : "+"}
 									</button>
 								</div>
-								<h3 className="mt-3 font-bold leading-snug">{p.nombre}</h3>
+								<div className="mt-3 flex items-baseline justify-between gap-3">
+									<h3 className="font-bold leading-snug">{p.nombre}</h3>
+									<span className="font-bold text-delicias tabular-nums whitespace-nowrap">{euros(p.precio)}</span>
+								</div>
 								<p className="text-sm text-tinta/65 leading-snug">{p.descripcion}</p>
 							</article>
 						);
