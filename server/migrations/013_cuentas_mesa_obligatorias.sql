@@ -15,6 +15,10 @@ FROM cuentas c
 WHERE p.tipo = 'mesa' AND p.cuenta_id IS NULL
 	AND c.mesa_numero = p.mesa_numero AND c.estado = 'abierta';
 
+-- El UPDATE deja eventos pendientes del trigger diferido pedidos_notificar, y
+-- PostgreSQL no permite ALTER TABLE con eventos pendientes: se disparan ya.
+SET CONSTRAINTS ALL IMMEDIATE;
+
 ALTER TABLE pedidos
 	ADD CONSTRAINT pedidos_mesa_cuenta_obligatoria
 	CHECK (tipo <> 'mesa' OR cuenta_id IS NOT NULL) NOT VALID;
