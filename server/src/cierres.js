@@ -33,8 +33,9 @@ function criterio(incluyeListos) {
 }
 
 function historicoCompatible(resumen) {
-	if (typeof resumen.criterio?.incluye_listos === "boolean") return resumen;
-	const incluyeListos = resumen.criterio?.valor === "entregados_y_listos";
+	const incluyeListos = typeof resumen.criterio?.incluye_listos === "boolean"
+		? resumen.criterio.incluye_listos
+		: resumen.criterio?.valor === "entregados_y_listos";
 	return {
 		...resumen,
 		criterio: criterio(incluyeListos),
