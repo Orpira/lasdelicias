@@ -79,7 +79,7 @@ function cargar(): { lineas: LineaCarrito[]; mesa: MesaActual | null } {
 		const guardado = JSON.parse(localStorage.getItem(CLAVE) ?? "null");
 		if (guardado && Array.isArray(guardado.lineas)) {
 			const mesa = guardado.mesa;
-			const vigente = mesa && typeof mesa === "object" && typeof mesa.token === "string" && /^[a-f0-9]{16}$/.test(mesa.token)
+			const vigente = mesa && typeof mesa === "object" && typeof mesa.token === "string" && /^[a-f0-9]{32}$/.test(mesa.token)
 				&& Number.isInteger(mesa.numero) && mesa.numero > 0 && typeof mesa.desde === "number"
 				&& Number.isFinite(mesa.desde) && Date.now() >= mesa.desde && Date.now() - mesa.desde < VIGENCIA_MESA_MS;
 			return {

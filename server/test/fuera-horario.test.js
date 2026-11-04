@@ -144,7 +144,7 @@ describe("Pedidos fuera de horario", {
 		for (const ruta of ["/pedidos", "/n8n/pedidos"]) {
 			const respuesta = await app.inject({
 				method: "POST", url: ruta, headers: { "x-api-key": process.env.N8N_API_KEY },
-				payload: { ...datos(), tipo: "recoger", hora_recogida: invalida },
+				payload: { ...datos(), ...(ruta === "/pedidos" ? { tipo: "recoger" } : {}), hora_recogida: invalida },
 			});
 			assert.equal(respuesta.statusCode, 400);
 			assert.match(respuesta.json().error, /07:00–19:00/);

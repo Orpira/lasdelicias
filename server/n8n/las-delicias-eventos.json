@@ -4,7 +4,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Antes de activar\n\n1. Sustituye `CAMBIAR_SECRETO_COMPARTIDO` en **¿Viene de la API?** por el mismo `N8N_WEBHOOK_SECRET` del servidor.\n2. Selecciona las credenciales de Telegram y Header Auth de Evolution (cabecera `apikey`).\n3. Configura la instancia de Evolution y los dos identificadores de chat marcados como `CAMBIAR`.\n4. Prueba las ramas y activa el flujo.\n\nConsulta **Conectar n8n** en `server/DESPLIEGUE.md`. No guardes secretos en el repositorio.",
+        "content": "## Antes de activar\n\n1. Sustituye `CAMBIAR_SECRETO_COMPARTIDO` en **Calcular firma** (campo Secret) por el mismo `N8N_WEBHOOK_SECRET` del servidor.\n2. Selecciona las credenciales de Telegram y Header Auth de Evolution (cabecera `apikey`).\n3. Configura la instancia de Evolution y los dos identificadores de chat marcados como `CAMBIAR`.\n4. Prueba las ramas y activa el flujo.\n\nConsulta **Conectar n8n** en `server/DESPLIEGUE.md`. No guardes secretos en el repositorio.",
         "height": 340,
         "width": 540
       },
@@ -12,7 +12,10 @@
       "name": "Configuración pendiente",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-880, -560]
+      "position": [
+        -880,
+        -560
+      ]
     },
     {
       "parameters": {
@@ -31,9 +34,45 @@
       "name": "Recibir eventos de la API",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-820, 160],
+      "position": [
+        -820,
+        160
+      ],
       "webhookId": "d5e61839-b130-4223-92d8-c781ce098f21",
-      "notes": "POST /webhook/las-delicias. Responde 200 inmediatamente, incluso si después se rechaza el secreto o falla una notificación."
+      "notes": "POST /webhook/las-delicias. Responde 200 inmediatamente, incluso si después se rechaza la firma o falla una notificación."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Primer filtro de los eventos de la API (firma completa en los dos nodos siguientes).\n// Descarta marcas de tiempo fuera de ±5 min e ids de evento ya vistos (anti-replay)\n// y prepara el texto que firma la API: \"<timestamp>.<evento>.<cuerpo>\" (ver server/src/firma.js).\nconst TOLERANCIA_S = 300;\nconst MAX_RECORDADOS = 5000;\nconst visto = $getWorkflowStaticData('global');\nvisto.eventos = visto.eventos ?? {};\nconst ahora = Math.floor(Date.now() / 1000);\nfor (const [id, ts] of Object.entries(visto.eventos)) if (ahora - ts > 2 * TOLERANCIA_S) delete visto.eventos[id];\n\nconst salida = [];\nfor (const item of $input.all()) {\n  const h = item.json.headers ?? {};\n  const ts = Number(h['x-delicias-timestamp']);\n  const id = String(h['x-delicias-evento'] ?? '');\n  const firma = String(h['x-delicias-firma'] ?? '');\n  if (!Number.isInteger(ts) || Math.abs(ahora - ts) > TOLERANCIA_S) continue;\n  if (!/^[0-9a-f-]{36}$/.test(id) || visto.eventos[id] || item.json.body?.evento_id !== id) continue;\n  if (!/^v1=[0-9a-f]{64}$/.test(firma)) continue;\n  if (Object.keys(visto.eventos).length >= MAX_RECORDADOS) continue;\n  visto.eventos[id] = ts;\n  // La API envía JSON.stringify(evento); volver a serializarlo reproduce los mismos bytes\n  salida.push({ json: { ...item.json, firma_base: ts + '.' + id + '.' + JSON.stringify(item.json.body), firma_recibida: firma.slice(3) } });\n}\nreturn salida;"
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800013",
+      "name": "Comprobar marca de tiempo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -580,
+        160
+      ],
+      "notes": "Rechaza en silencio eventos antiguos, repetidos o sin cabeceras de firma. No necesita módulos ni variables de entorno."
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "value": "={{ $json.firma_base }}",
+        "dataPropertyName": "firma_calculada",
+        "secret": "CAMBIAR_SECRETO_COMPARTIDO",
+        "encoding": "hex"
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800014",
+      "name": "Calcular firma",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -380,
+        160
+      ],
+      "notes": "Cambia solo Secret por el mismo N8N_WEBHOOK_SECRET del servidor."
     },
     {
       "parameters": {
@@ -47,8 +86,8 @@
           "conditions": [
             {
               "id": "a9b814fd-37d1-4572-9fb5-a9504fd00001",
-              "leftValue": "={{ $json.headers?.['x-delicias-secret'] ?? '' }}",
-              "rightValue": "CAMBIAR_SECRETO_COMPARTIDO",
+              "leftValue": "={{ $json.firma_calculada }}",
+              "rightValue": "={{ $json.firma_recibida }}",
               "operator": {
                 "type": "string",
                 "operation": "equals"
@@ -56,7 +95,7 @@
             },
             {
               "id": "a9b814fd-37d1-4572-9fb5-a9504fd00002",
-              "leftValue": "={{ typeof $json.headers?.['x-delicias-secret'] === 'string' && $json.headers['x-delicias-secret'].length > 0 && !$json.headers['x-delicias-secret'].startsWith('CAMBIAR_') }}",
+              "leftValue": "={{ /^[0-9a-f]{64}$/.test($json.firma_calculada ?? '') }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -70,11 +109,14 @@
         "options": {}
       },
       "id": "192aa8c3-910b-4b46-9e2f-83d9a0800003",
-      "name": "¿Viene de la API?",
+      "name": "¿Firma válida?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-580, 160],
-      "notes": "Cambia solo el valor derecho de la primera condición por el secreto compartido. La segunda impide aceptar secretos vacíos o marcadores CAMBIAR_. La salida falsa termina sin acciones."
+      "position": [
+        -180,
+        160
+      ],
+      "notes": "Compara la firma HMAC-SHA256 calculada con la recibida. La salida falsa termina sin acciones."
     },
     {
       "parameters": {
@@ -227,19 +269,30 @@
                     "id": "a9b814fd-37d1-4572-9fb5-a9504fd00013",
                     "leftValue": "={{ $json.body?.tipo ?? '' }}",
                     "rightValue": "pedido.creado",
-                    "operator": { "type": "string", "operation": "equals" }
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   },
                   {
                     "id": "a9b814fd-37d1-4572-9fb5-a9504fd00014",
                     "leftValue": "={{ $json.body?.pedido?.fuera_horario === true }}",
                     "rightValue": "",
-                    "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
                   },
                   {
                     "id": "a9b814fd-37d1-4572-9fb5-a9504fd00015",
                     "leftValue": "={{ String($json.body?.pedido?.telefono ?? '').trim() }}",
                     "rightValue": "",
-                    "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
                   }
                 ],
                 "combinator": "and"
@@ -307,7 +360,10 @@
       "name": "Distribuir eventos",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [-300, 160]
+      "position": [
+        100,
+        160
+      ]
     },
     {
       "parameters": {
@@ -319,7 +375,10 @@
       "name": "Normalizar teléfono",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [40, -300],
+      "position": [
+        440,
+        -300
+      ],
       "notes": "Normaliza el teléfono y prepara el aviso de pedido listo o la confirmación fuera de horario, con fecha y hora de Madrid. Un teléfono o una apertura inválidos detienen la ejecución con error."
     },
     {
@@ -340,7 +399,10 @@
       "name": "Avisar por WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [340, -300],
+      "position": [
+        740,
+        -300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "CAMBIAR_CREDENCIAL_EVOLUTION",
@@ -364,7 +426,10 @@
       "name": "Avisar al personal por Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [340, -40],
+      "position": [
+        740,
+        -40
+      ],
       "credentials": {
         "telegramApi": {
           "id": "CAMBIAR_CREDENCIAL_TELEGRAM",
@@ -387,7 +452,10 @@
       "name": "Avisar de stock al dueño",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [340, 200],
+      "position": [
+        740,
+        200
+      ],
       "credentials": {
         "telegramApi": {
           "id": "CAMBIAR_CREDENCIAL_TELEGRAM",
@@ -410,7 +478,10 @@
       "name": "Avisar de opinión al dueño",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [340, 440],
+      "position": [
+        740,
+        440
+      ],
       "credentials": {
         "telegramApi": {
           "id": "CAMBIAR_CREDENCIAL_TELEGRAM",
@@ -428,7 +499,10 @@
       "name": "Ampliaciones futuras",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-300, 560]
+      "position": [
+        -300,
+        560
+      ]
     }
   ],
   "connections": {
@@ -436,14 +510,36 @@
       "main": [
         [
           {
-            "node": "¿Viene de la API?",
+            "node": "Comprobar marca de tiempo",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Viene de la API?": {
+    "Comprobar marca de tiempo": {
+      "main": [
+        [
+          {
+            "node": "Calcular firma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular firma": {
+      "main": [
+        [
+          {
+            "node": "¿Firma válida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Firma válida?": {
       "main": [
         [
           {

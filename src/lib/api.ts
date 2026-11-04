@@ -28,10 +28,10 @@ export class ErrorApi extends Error {
 	}
 }
 
-type Opciones = { metodo?: string; cuerpo?: unknown; auth?: boolean; formData?: FormData };
+type Opciones = { metodo?: string; cuerpo?: unknown; auth?: boolean; formData?: FormData; cabeceras?: Record<string, string> };
 
-async function solicitar(ruta: string, { metodo = "GET", cuerpo, auth = false, formData }: Opciones = {}): Promise<Response> {
-	const cabeceras: Record<string, string> = {};
+async function solicitar(ruta: string, { metodo = "GET", cuerpo, auth = false, formData, cabeceras: extra }: Opciones = {}): Promise<Response> {
+	const cabeceras: Record<string, string> = { ...extra };
 	if (cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
 	if (auth) {
 		const token = leerToken();
