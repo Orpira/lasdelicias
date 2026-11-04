@@ -107,12 +107,19 @@ export interface EventoCuenta {
 
 export interface PedidoPendienteCobro extends Pick<Pedido, "codigo" | "numero_dia" | "nombre_cliente" | "tipo" | "estado" | "total" | "created_at" | "pagado_at" | "metodo_pago"> {
 	id: string;
+	de_dias_anteriores?: boolean;
 }
 
 export interface PendientesCobro {
 	pedidos: PedidoPendienteCobro[];
 	cuentas: Cuenta[];
+	anteriores: {
+		pedidos: PedidoPendienteCobro[];
+		cuentas: Cuenta[];
+	};
 	total: number;
+	total_hoy: number;
+	total_anteriores: number;
 }
 
 export interface LlamadaMesa {

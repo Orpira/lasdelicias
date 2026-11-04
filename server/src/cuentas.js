@@ -63,14 +63,27 @@ export async function listarCuentas(estado = "abierta") {
 export async function pendientesDeCobro() {
 	const [{ rows: pedidos }, cuentas] = await Promise.all([
 		query(
-			`SELECT id, codigo, numero_dia, nombre_cliente, tipo, estado, total, created_at, pagado_at, metodo_pago
-			 FROM pedidos WHERE tipo IN ('recoger','whatsapp') AND estado = 'entregado' AND pagado_at IS NULL
+			`SELECT id, codigo, numero_dia, nombre_cliente, tipo, estado, total, created_at, pagado_at, metodo_pago,
+				(p.fecha < (now() AT TIME ZONE $1)::date) AS de_dias_anteriores
+			 FROM pedidos p
+			 WHERE tipo IN ('recoger','whatsapp') AND estado = 'entregado' AND pagado_at IS NULL
 			 ORDER BY created_at, id`,
+			[config.zonaHoraria],
 		),
 		listarCuentas(),
 	]);
-	const antiguas = cuentas.filter((cuenta) => cuenta.de_dias_anteriores);
-	return { pedidos, cuentas: antiguas, total: pedidos.length + antiguas.length };
+	const pedidosHoy = pedidos.filter((pedido) => !pedido.de_dias_anteriores);
+	const pedidosAnteriores = pedidos.filter((pedido) => pedido.de_dias_anteriores);
+	const cuentasHoy = cuentas.filter((cuenta) => !cuenta.de_dias_anteriores);
+	const cuentasAnteriores = cuentas.filter((cuenta) => cuenta.de_dias_anteriores);
+	return {
+		pedidos: pedidosHoy,
+		cuentas: cuentasHoy,
+		anteriores: { pedidos: pedidosAnteriores, cuentas: cuentasAnteriores },
+		total: pedidos.length + cuentas.length,
+		total_hoy: pedidosHoy.length + cuentasHoy.length,
+		total_anteriores: pedidosAnteriores.length + cuentasAnteriores.length,
+	};
 }
 
 async function cuentaParaCerrar(conexion, id) {

@@ -101,7 +101,8 @@ export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => 
 				<section className="mb-5 rounded-2xl border border-orange-300 bg-orange-50 p-4">
 					<button onClick={() => setMostrarPendientes((anterior) => !anterior)} aria-expanded={mostrarPendientes} aria-controls="pendientes-cobro"
 						className="flex min-h-[44px] items-center gap-2 font-bold text-orange-900">
-						<AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" /> Pendiente de cobro ({pendientes.total})
+						<AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" /> Pendiente de cobro hoy ({pendientes.total_hoy})
+						{pendientes.total_anteriores > 0 && <span className="font-normal">· anteriores: {pendientes.total_anteriores}</span>}
 					</button>
 					{mostrarPendientes && <div id="pendientes-cobro" className="mt-3 space-y-3">
 						{pendientes.cuentas.map((cuenta) => <button key={cuenta.id} onClick={() => setCuentaAbierta(cuenta.id)}
@@ -113,6 +114,20 @@ export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => 
 							<p className="mb-3 text-sm text-tinta/70">{pedido.tipo === "whatsapp" ? "WhatsApp" : "Para llevar"} · entregado sin cobrar</p>
 							<BotonesCobro alCobrar={(metodo) => cobrarPedido(pedido, metodo)} bloqueado={cobrando !== null} titulo={`Cobrar pedido #${pedido.numero_dia}`} />
 						</div>)}
+						{pendientes.total_anteriores > 0 && <details className="rounded-xl border border-orange-200 bg-orange-100/60 p-3">
+							<summary className="cursor-pointer font-bold text-orange-900">Pendientes de días anteriores ({pendientes.total_anteriores})</summary>
+							<div className="mt-3 space-y-3">
+								{pendientes.anteriores.cuentas.map((cuenta) => <button key={cuenta.id} onClick={() => setCuentaAbierta(cuenta.id)}
+									className="flex w-full flex-wrap justify-between gap-2 rounded-xl bg-white p-4 text-left font-semibold">
+									<span className="min-w-0 break-words">{etiquetaMesa(cuenta.mesa_numero, cuenta.mesa_nombre, { conNumero: true })}</span><span>{euros(cuenta.total)} · Abrir cuenta</span>
+								</button>)}
+								{pendientes.anteriores.pedidos.map((pedido) => <div key={pedido.id} className="rounded-xl bg-white p-4">
+									<p className="mb-1 font-bold">Pedido #{pedido.numero_dia} · {pedido.nombre_cliente} · {euros(pedido.total)}</p>
+									<p className="mb-3 text-sm text-tinta/70">{pedido.tipo === "whatsapp" ? "WhatsApp" : "Para llevar"} · entregado sin cobrar</p>
+									<BotonesCobro alCobrar={(metodo) => cobrarPedido(pedido, metodo)} bloqueado={cobrando !== null} titulo={`Cobrar pedido #${pedido.numero_dia}`} />
+								</div>)}
+							</div>
+						</details>}
 					</div>}
 				</section>
 			)}

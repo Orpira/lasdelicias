@@ -289,7 +289,9 @@ describe("Cuentas y registro del cobro", {
 		const pendientes = await cuentas.pendientesDeCobro();
 		assert.equal(pendientes.total, 2);
 		assert.equal(pendientes.pedidos[0].id, llevar.id);
-		assert.equal(pendientes.cuentas[0].id, mesa.cuenta_id);
+		assert.equal(pendientes.total_hoy, 1);
+		assert.equal(pendientes.total_anteriores, 1);
+		assert.equal(pendientes.anteriores.cuentas[0].id, mesa.cuenta_id);
 		await cuentas.cobrarPedido(llevar.id, { metodo_pago: "efectivo" });
 		assert.equal((await cuentas.pendientesDeCobro()).total, 1);
 	});
