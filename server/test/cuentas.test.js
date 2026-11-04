@@ -48,6 +48,8 @@ describe("Cuentas y registro del cobro", {
 				throw error;
 			}
 		}
+		const horario = Object.fromEntries(["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"].map((dia) => [dia, "00:00–24:00"]));
+		await pool.query("UPDATE negocio SET datos = datos || jsonb_build_object('horario', $1::jsonb, 'dias_cerrado', '[]'::jsonb) WHERE id = 1", [horario]);
 		({ rows: legado } = await pool.query("SELECT codigo, cuenta_id FROM pedidos ORDER BY numero_dia"));
 		({ rows: [administrador] } = await pool.query(
 			"INSERT INTO staff (email, nombre, password_hash, rol) VALUES ('admin@pruebas.invalid', 'Administración de prueba', 'no-se-usa', 'admin') RETURNING id, rol",

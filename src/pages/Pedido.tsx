@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, euros } from "../lib/api";
+import { api, euros, hora } from "../lib/api";
 import { useCarrito } from "../lib/carrito";
 import type { Pedido as TPedido } from "../types/producto";
 import { ShoppingBag } from "lucide-react";
@@ -8,6 +8,8 @@ import { ErrorApi } from "../lib/api";
 import { idDispositivo } from "../lib/dispositivo";
 import { etiquetaMesa } from "../lib/mesa";
 import { recordarPedido } from "../lib/cuentas";
+import { useEstadoHorario } from "../lib/horario";
+import { diaApertura } from "../lib/programados";
 
 const CLAVE_CLIENTE = "delicias.cliente";
 
@@ -35,8 +37,10 @@ export default function Pedido() {
 	const carrito = useCarrito();
 	const navigate = useNavigate();
 	const [guardado] = useState(leerDatosCliente);
+	const { estado: horario, error: errorHorario, cargando: cargandoHorario, recargar: recargarHorario } = useEstadoHorario(true);
 
-	const [tipo, setTipo] = useState<"mesa" | "recoger">(carrito.mesa ? "mesa" : "recoger");
+	const [eleccionTipo, setTipo] = useState<"mesa" | "recoger">(carrito.mesa ? "mesa" : "recoger");
+	const tipo = horario?.abierto === false ? "recoger" : eleccionTipo;
 	const [nombre, setNombre] = useState(guardado?.nombre ?? "");
 	const [telefono, setTelefono] = useState(guardado?.telefono ?? "");
 	const [recordarDatos, setRecordarDatos] = useState(guardado !== null);
@@ -62,15 +66,16 @@ export default function Pedido() {
 	async function enviar(e: FormEvent) {
 		e.preventDefault();
 		setError("");
+		if (!horario) return setError("No se pudo comprobar el horario. Pulsa Reintentar antes de enviar el pedido.");
+		if (!horario.abierto && !horario.siguiente_apertura) return setError("Ahora mismo no tenemos horario de apertura previsto. Llámanos para hacer tu pedido.");
 
 		let hora_recogida: string | undefined;
 		if (tipo === "recoger" && cuando === "hora") {
 			if (!horaElegida) return setError("Elige la hora de recogida");
-			const [h, m] = horaElegida.split(":").map(Number);
-			const fecha = new Date();
-			fecha.setHours(h, m, 0, 0);
-			if (fecha.getTime() < Date.now()) return setError("Esa hora ya ha pasado");
-			hora_recogida = fecha.toISOString();
+			if (!horario.recogida?.opciones.some((opcion) => opcion.instante === horaElegida) || Date.parse(horaElegida) < Date.now()) {
+				return setError("Esa hora ya no está disponible. Elige otra hora de recogida.");
+			}
+			hora_recogida = horaElegida;
 		}
 
 		setEnviando(true);
@@ -104,10 +109,12 @@ export default function Pedido() {
 			carrito.vaciar();
 			navigate(`/pedido/${pedido.codigo}`, { replace: true });
 		} catch (err) {
-			// QR regenerado o caducado: hay que volver a escanear
 			if (err instanceof ErrorApi && err.status === 409 && tipo === "mesa") {
-				carrito.fijarMesa(null);
-				setTipo("recoger");
+				if (err.message.startsWith("El código de esta mesa")) {
+					carrito.fijarMesa(null);
+					setTipo("recoger");
+				} else if (err.message.startsWith("El local está cerrado")) setTipo("recoger");
+				recargarHorario();
 			}
 			setError(err instanceof Error ? err.message : "No se pudo enviar el pedido");
 		} finally {
@@ -118,6 +125,13 @@ export default function Pedido() {
 	return (
 		<div className="max-w-xl mx-auto px-5 py-10 text-tinta">
 			<h1 className="text-4xl font-extrabold tracking-titular mb-6">Tu pedido</h1>
+			{cargandoHorario && !horario && <p role="status" className="mb-5">Consultando el horario…</p>}
+			{errorHorario && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-red-700">{errorHorario} <button type="button" onClick={recargarHorario} className="font-bold underline">Reintentar</button></p>}
+			{horario && !horario.abierto && <div role="status" className="mb-6 rounded-2xl border border-delicias/20 bg-merengue p-5 text-delicias">
+				<p className="font-bold">{horario.siguiente_apertura
+					? `Ahora estamos cerrados. Recibiremos tu pedido y lo prepararemos el ${diaApertura(horario.siguiente_apertura)} a partir de las ${hora(horario.siguiente_apertura)}.`
+					: "Ahora mismo no tenemos horario de apertura previsto. Llámanos para hacer tu pedido."}</p>
+			</div>}
 
 			<ul className="bg-white rounded-2xl border border-delicias/15 divide-y mb-6">
 				{carrito.lineas.map(({ producto, cantidad }) => (
@@ -141,7 +155,7 @@ export default function Pedido() {
 			</ul>
 
 			<form onSubmit={enviar} className="bg-white rounded-2xl border border-delicias/15 p-5 flex flex-col gap-4">
-				{carrito.mesa && (
+				{carrito.mesa && horario?.abierto && (
 					<div className="grid grid-cols-2 gap-2">
 						<button type="button" onClick={() => setTipo("mesa")}
 							className={`py-3 rounded-xl font-semibold border-2 ${tipo === "mesa" ? "border-delicias bg-delicias-claro text-delicias" : "border-gray-200"}`}>
@@ -179,14 +193,21 @@ export default function Pedido() {
 						<legend className="text-sm font-semibold mb-1">¿Cuándo lo recoges?</legend>
 						<label className="flex items-center gap-2">
 							<input type="radio" checked={cuando === "ya"} onChange={() => setCuando("ya")} />
-							Lo antes posible
+							{horario && !horario.abierto && horario.siguiente_apertura
+								? `En cuanto abramos (${diaApertura(horario.siguiente_apertura)} a las ${hora(horario.siguiente_apertura)})`
+								: "Lo antes posible"}
 						</label>
 						<label className="flex items-center gap-2">
 							<input type="radio" checked={cuando === "hora"} onChange={() => setCuando("hora")} />
 							A una hora:
-							<input type="time" value={horaElegida} onChange={(e) => { setHoraElegida(e.target.value); setCuando("hora"); }}
-								className="border rounded-lg px-2 py-1 bg-white" />
+							<select aria-label="Hora de recogida" value={horaElegida} disabled={!horario?.recogida?.opciones.length}
+								onChange={(e) => { setHoraElegida(e.target.value); setCuando("hora"); }}
+								className="min-w-0 border rounded-lg px-2 py-1 bg-white">
+								<option value="">Elige una hora</option>
+								{horario?.recogida?.opciones.map((opcion) => <option key={opcion.instante} value={opcion.instante}>{opcion.hora}</option>)}
+							</select>
 						</label>
+						{horario?.recogida && <p className="text-xs text-tinta/70">Horas del {diaApertura(`${horario.recogida.fecha}T12:00:00Z`, true)}, en Madrid.</p>}
 					</fieldset>
 				)}
 
@@ -204,7 +225,7 @@ export default function Pedido() {
 
 				{error && <p className="text-red-600 font-semibold" role="alert">{error}</p>}
 
-				<button type="submit" disabled={enviando}
+				<button type="submit" disabled={enviando || cargandoHorario || !horario || !horario.abierto && !horario.siguiente_apertura}
 					className="py-4 rounded-xl bg-delicias text-white text-lg font-bold hover:bg-delicias-oscuro disabled:opacity-60 transition">
 					{enviando ? "Enviando…" : `Enviar pedido · ${euros(carrito.total)}`}
 				</button>

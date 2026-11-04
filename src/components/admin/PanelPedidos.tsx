@@ -7,6 +7,7 @@ import type { EstadoPedido, LlamadaMesa, MetodoPago, Pedido, PedidoPendienteCobr
 import { etiquetaMesa } from "../../lib/mesa";
 import CuentaCobro from "./CuentaCobro";
 import BotonesCobro from "./BotonesCobro";
+import { diaApertura, estaProgramado } from "../../lib/programados";
 
 const COLUMNAS: { estado: EstadoPedido; titulo: string; color: string }[] = [
 	{ estado: "nuevo", titulo: "Nuevos", color: "border-red-500" },
@@ -21,13 +22,14 @@ const SIGUIENTE: Partial<Record<EstadoPedido, { estado: EstadoPedido; texto: str
 };
 
 export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => void; esAdmin: boolean }) {
+	const ahora = useAhora();
 	const { pedidos, llamadas, cuentas, pendientes, recargarCobros, actualizarPedido, conectado, error, setError, mover, atender, avisosStock, descartarAvisoStock } =
-		usePedidosEnVivo(alCaducar, true);
+		usePedidosEnVivo(alCaducar, true, ahora);
 	const [cuentaAbierta, setCuentaAbierta] = useState<string | null>(null);
 	const [mostrarPendientes, setMostrarPendientes] = useState(false);
 	const [cobrando, setCobrando] = useState<string | null>(null);
-	const ahora = useAhora();
 	usePantallaEncendida();
+	const programados = pedidos.filter((pedido) => pedido.estado !== "cancelado" && pedido.estado !== "entregado" && estaProgramado(pedido, ahora)).sort(porLlegada);
 
 	function abrirLlamada(llamada: LlamadaMesa) {
 		if (llamada.motivo === "atencion") { void atender(llamada); return; }
@@ -127,9 +129,25 @@ export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => 
 				</div>
 			)}
 
+			{programados.length > 0 && <details className="mb-5 rounded-2xl border border-delicias/20 bg-merengue p-4">
+				<summary className="min-h-[44px] cursor-pointer text-lg font-bold text-delicias">Programados para la apertura ({programados.length})</summary>
+				<div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+					{programados.map((pedido) => <article key={pedido.id} className="rounded-xl bg-white p-4">
+						<h2 className="font-bold">#{pedido.numero_dia} · {pedido.nombre_cliente}</h2>
+						<p className="mt-1 text-sm font-semibold text-delicias">A partir del {diaApertura(pedido.atender_desde!, true)} a las {hora(pedido.atender_desde!)}</p>
+						<p className="mt-1 text-sm">{pedido.tipo === "whatsapp" ? "WhatsApp" : "Para llevar"} · {euros(pedido.total)}</p>
+						{pedido.hora_recogida && <p className="text-sm">Recogida: {hora(pedido.hora_recogida)}</p>}
+						<ul className="mt-2">{pedido.items.map((item, indice) => <li key={indice}>{item.cantidad} × {item.nombre}</li>)}</ul>
+						{pedido.notas && <p className="mt-2 text-sm">📝 {pedido.notas}</p>}
+						<button onClick={() => window.confirm(`¿Cancelar el pedido #${pedido.numero_dia}?`) && mover(pedido, "cancelado")}
+							className="mt-3 rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700">Cancelar pedido</button>
+					</article>)}
+				</div>
+			</details>}
+
 			<div className="grid md:grid-cols-3 gap-4">
 				{COLUMNAS.map((col) => {
-					const lista = pedidos.filter((p) => p.estado === col.estado).sort(porLlegada);
+					const lista = pedidos.filter((p) => p.estado === col.estado && !estaProgramado(p, ahora)).sort(porLlegada);
 					return (
 						<section key={col.estado} className="bg-white/60 rounded-2xl p-3 min-h-[60vh]">
 							<h2 className={`font-bold text-lg mb-3 flex justify-between border-b-2 pb-2 ${col.color}`}>
@@ -137,7 +155,7 @@ export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => 
 							</h2>
 							<div className="flex flex-col gap-3">
 								{lista.map((p) => {
-									const min = minutosDesde(p.created_at, ahora);
+									const min = minutosDesde(p.atender_desde ?? p.created_at, ahora);
 									const siguiente = SIGUIENTE[p.estado];
 									const etiquetaActual = p.mesa_numero !== null ? etiquetaMesa(p.mesa_numero, p.mesa_nombre, { conNumero: true }) : null;
 									const etiquetaAnterior = p.mesa_anterior !== null ? etiquetaMesa(p.mesa_anterior, null, { conNumero: true }) : null;
@@ -150,6 +168,7 @@ export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => 
 													<p className="text-gray-500">{euros(p.total)}</p>
 												</div>
 											</div>
+											{p.fuera_horario && <p className="mt-2 text-sm font-semibold text-delicias">🌙 Recibido fuera de horario</p>}
 											<p className="font-semibold mt-1">
 												{p.tipo === "mesa" && etiquetaActual && <span className="px-2 py-0.5 rounded bg-delicias-claro text-delicias mr-2">🪑 {etiquetaActual}</span>}
 												{p.tipo === "recoger" && <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 mr-2">🛍️ {p.hora_recogida ? `Recoge ${hora(p.hora_recogida)}` : "Para llevar"}</span>}

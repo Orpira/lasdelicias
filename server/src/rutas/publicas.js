@@ -4,7 +4,8 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { query } from "../db.js";
 import { config } from "../config.js";
-import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, esquemaOpinion, esquemaInicioStreamMesa, tokenMesa, validar } from "../esquemas.js";
+import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, esquemaOpinion, esquemaInicioStreamMesa, esquemaConsultaHorario, tokenMesa, validar } from "../esquemas.js";
+import { estadoHorario } from "../horario.js";
 import {
 	cambiarDeMesa,
 	crearPedido,
@@ -42,6 +43,15 @@ export default async function rutasPublicas(app) {
 		const { rows } = await query("SELECT datos, updated_at FROM negocio WHERE id = 1");
 		reply.header("Cache-Control", "public, max-age=300");
 		return { ...rows[0]?.datos, actualizado: rows[0]?.updated_at };
+	});
+
+	app.get("/horario/estado", async (request, reply) => {
+		const { recogida } = validar(esquemaConsultaHorario, request.query);
+		const { rows: [negocio] } = await query("SELECT datos, clock_timestamp() AS instante FROM negocio WHERE id = 1");
+		if (!negocio) throw new ErrorOperacion("No existe la ficha del negocio para consultar su horario", 500);
+		const { horario, dias_cerrado = [] } = negocio.datos;
+		reply.header("Cache-Control", "no-store");
+		return estadoHorario(horario, dias_cerrado, negocio.instante, { conRecogida: recogida === "true" });
 	});
 
 	// Destino del QR: /mesas/qr/<token>?dispositivo=<id>

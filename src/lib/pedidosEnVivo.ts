@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ErrorApi, escuchar, leerToken } from "./api";
 import type { Cuenta, EstadoPedido, LlamadaMesa, Pedido, PendientesCobro } from "../types/producto";
 import { esEventoCuenta } from "./cuentas";
+import { avisosDeApertura, estaProgramado } from "./programados";
 
 /** Pitido corto con Web Audio (sin archivos de sonido) */
 export function pitar(veces = 1) {
@@ -58,16 +59,21 @@ export const COLORES_PEDIDO: Record<EstadoPedido, string> = {
 	cancelado: "border-gray-400 bg-gray-50",
 };
 
-export function usePedidosEnVivo(alCaducar: () => void, conCobro = false) {
+export function usePedidosEnVivo(alCaducar: () => void, conCobro = false, ahora = Date.now()) {
 	const [pedidos, setPedidos] = useState<Pedido[]>([]);
 	const [llamadas, setLlamadas] = useState<LlamadaMesa[]>([]);
 	const [conectado, setConectado] = useState(false);
 	const [error, setError] = useState("");
 	const [avisosStock, setAvisosStock] = useState<AvisoStock[]>([]);
 	const vistos = useRef(new Set<string>());
+	const programados = useRef(new Set<string>());
 	const [cuentas, setCuentas] = useState<Cuenta[]>([]);
 	const [pendientes, setPendientes] = useState<PendientesCobro | null>(null);
 	const consultasCobro = useRef({ revision: 0 });
+
+	useEffect(() => {
+		if (avisosDeApertura(pedidos, ahora, programados.current) > 0) pitar(2);
+	}, [pedidos, ahora]);
 
 	const recargarCobros = useCallback(async () => {
 		if (!conCobro) return;
@@ -122,7 +128,9 @@ export function usePedidosEnVivo(alCaducar: () => void, conCobro = false) {
 					const p = datos as Pedido;
 					if (!vistos.current.has(p.id!)) {
 						vistos.current.add(p.id!);
-						pitar(2);
+						if (estaProgramado(p, Date.now())) {
+							if (p.estado === "nuevo") programados.current.add(p.codigo);
+						} else pitar(2);
 					}
 					setPedidos((prev) => [...prev.filter((x) => x.id !== p.id), p]);
 					void recargarCobros();

@@ -54,6 +54,8 @@ export interface Pedido {
 	mesa_anterior: number | null;
 	cambio_mesa: "declarado" | "detectado" | null;
 	hora_recogida: string | null;
+	fuera_horario: boolean;
+	atender_desde: string | null;
 	notas: string;
 	estado: EstadoPedido;
 	total: number;

@@ -1,0 +1,518 @@
+{
+  "name": "Las Delicias · Eventos de la API",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Antes de activar\n\n1. Sustituye `CAMBIAR_SECRETO_COMPARTIDO` en **¿Viene de la API?** por el mismo `N8N_WEBHOOK_SECRET` del servidor.\n2. Selecciona las credenciales de Telegram y Header Auth de Evolution (cabecera `apikey`).\n3. Configura la instancia de Evolution y los dos identificadores de chat marcados como `CAMBIAR`.\n4. Prueba las ramas y activa el flujo.\n\nConsulta **Conectar n8n** en `server/DESPLIEGUE.md`. No guardes secretos en el repositorio.",
+        "height": 340,
+        "width": 540
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800001",
+      "name": "Configuración pendiente",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-880, -560]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "las-delicias",
+        "responseMode": "onReceived",
+        "options": {
+          "responseCode": {
+            "values": {
+              "responseCode": 200
+            }
+          }
+        }
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800002",
+      "name": "Recibir eventos de la API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-820, 160],
+      "webhookId": "d5e61839-b130-4223-92d8-c781ce098f21",
+      "notes": "POST /webhook/las-delicias. Responde 200 inmediatamente, incluso si después se rechaza el secreto o falla una notificación."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a9b814fd-37d1-4572-9fb5-a9504fd00001",
+              "leftValue": "={{ $json.headers?.['x-delicias-secret'] ?? '' }}",
+              "rightValue": "CAMBIAR_SECRETO_COMPARTIDO",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "a9b814fd-37d1-4572-9fb5-a9504fd00002",
+              "leftValue": "={{ typeof $json.headers?.['x-delicias-secret'] === 'string' && $json.headers['x-delicias-secret'].length > 0 && !$json.headers['x-delicias-secret'].startsWith('CAMBIAR_') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800003",
+      "name": "¿Viene de la API?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-580, 160],
+      "notes": "Cambia solo el valor derecho de la primera condición por el secreto compartido. La segunda impide aceptar secretos vacíos o marcadores CAMBIAR_. La salida falsa termina sin acciones."
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00003",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "pedido.estado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00004",
+                    "leftValue": "={{ $json.body?.pedido?.estado ?? '' }}",
+                    "rightValue": "listo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00005",
+                    "leftValue": "={{ $json.body?.pedido?.tipo ?? '' }}",
+                    "rightValue": "mesa",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  },
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00006",
+                    "leftValue": "={{ String($json.body?.pedido?.telefono ?? '').trim() }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Pedido listo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00007",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "mesa.llamada",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Llamada de mesa"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00008",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "stock.bajo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00009",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "stock.agotado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "Stock"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00010",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "opinion.nueva",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Opinión nueva"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00013",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "pedido.creado",
+                    "operator": { "type": "string", "operation": "equals" }
+                  },
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00014",
+                    "leftValue": "={{ $json.body?.pedido?.fuera_horario === true }}",
+                    "rightValue": "",
+                    "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+                  },
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00015",
+                    "leftValue": "={{ String($json.body?.pedido?.telefono ?? '').trim() }}",
+                    "rightValue": "",
+                    "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Recibido fuera de horario"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00011",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "pedido.creado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Pedido creado · reservado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a9b814fd-37d1-4572-9fb5-a9504fd00012",
+                    "leftValue": "={{ $json.body?.tipo ?? '' }}",
+                    "rightValue": "pedido.mesa",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cambio de mesa · reservado"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Otros eventos",
+          "allMatchingOutputs": false
+        }
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800004",
+      "name": "Distribuir eventos",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-300, 160]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const pedido = $json.body.pedido;\nlet telefono = String(pedido.telefono).replace(/[\\s()+-]/g, '');\n\nif (telefono.startsWith('00')) telefono = telefono.slice(2);\nif (/^[6789]\\d{8}$/.test(telefono)) telefono = `34${telefono}`;\n\nif (!/^[1-9]\\d{6,14}$/.test(telefono)) {\n  throw new Error('El teléfono del pedido no tiene un formato internacional válido.');\n}\n\nlet mensaje;\nif ($json.body.tipo === 'pedido.creado' && pedido.fuera_horario === true) {\n  const apertura = new Date(pedido.atender_desde);\n  if (typeof pedido.atender_desde !== 'string' || !Number.isFinite(apertura.getTime())) {\n    throw new Error('El pedido programado no tiene una fecha de apertura válida.');\n  }\n  const dia = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long' }).format(apertura);\n  const hora = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(apertura);\n  mensaje = `¡Hola ${pedido.nombre_cliente}! Hemos recibido tu pedido #${pedido.numero_dia} en Las Delicias. Ahora estamos cerrados: lo prepararemos el ${dia} a partir de las ${hora} y te avisaremos cuando esté listo. ¡Gracias!`;\n} else {\n  mensaje = `¡Hola ${pedido.nombre_cliente}! Tu pedido #${pedido.numero_dia} de Las Delicias ya está listo. Pasa a recogerlo por la barra 😊`;\n}\n\nreturn { json: { telefono, mensaje } };"
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800005",
+      "name": "Normalizar teléfono",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [40, -300],
+      "notes": "Normaliza el teléfono y prepara el aviso de pedido listo o la confirmación fuera de horario, con fecha y hora de Madrid. Un teléfono o una apertura inválidos detienen la ejecución con error."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/CAMBIAR_INSTANCIA_EVOLUTION",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { number: $json.telefono, text: $json.mensaje } }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800006",
+      "name": "Avisar por WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, -300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CAMBIAR_CREDENCIAL_EVOLUTION",
+          "name": "CAMBIAR_CREDENCIAL_EVOLUTION"
+        }
+      },
+      "notes": "Selecciona Header Auth con cabecera apikey y sustituye la instancia en la URL. Contrato number/text contrastado con Evolution API v2.2.3 y v2.3.7. Sin reintentos automáticos para evitar mensajes duplicados."
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "CAMBIAR_CHAT_ID_GRUPO_PERSONAL",
+        "text": "={{ (() => { const llamada = $json.body.llamada; const mesa = llamada.mesa_nombre?.trim() || 'Mesa ' + llamada.mesa_numero; const mensaje = llamada.motivo === 'cuenta' ? `🧾 ${mesa} pide la cuenta` : `🙋 ${mesa} llama al personal`; return mensaje.replace(/[&<>]/g, caracter => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[caracter]); })() }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800007",
+      "name": "Avisar al personal por Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, -40],
+      "credentials": {
+        "telegramApi": {
+          "id": "CAMBIAR_CREDENCIAL_TELEGRAM",
+          "name": "CAMBIAR_CREDENCIAL_TELEGRAM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "CAMBIAR_CHAT_ID_DUENO",
+        "text": "={{ ($json.body.tipo === 'stock.agotado' ? `⛔ ${$json.body.nombre} se ha agotado` : `📦 Quedan ${$json.body.stock} de ${$json.body.nombre} (mínimo ${$json.body.stock_minimo})`).replace(/[&<>]/g, caracter => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[caracter]) }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800008",
+      "name": "Avisar de stock al dueño",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "CAMBIAR_CREDENCIAL_TELEGRAM",
+          "name": "CAMBIAR_CREDENCIAL_TELEGRAM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "CAMBIAR_CHAT_ID_DUENO",
+        "text": "={{ `⭐ Nueva opinión de ${$json.body.nombre} (${$json.body.puntuacion}/5)${$json.body.verificada === true ? ' · pedido verificado' : ''}: ${$json.body.comentario}. Revísala en el panel → Opiniones.`.replace(/[&<>]/g, caracter => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[caracter]) }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800009",
+      "name": "Avisar de opinión al dueño",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, 440],
+      "credentials": {
+        "telegramApi": {
+          "id": "CAMBIAR_CREDENCIAL_TELEGRAM",
+          "name": "CAMBIAR_CREDENCIAL_TELEGRAM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Confirmación y salidas reservadas\n\n**Recibido fuera de horario** confirma por WhatsApp la próxima apertura. Comparte normalización, credencial e instancia de Evolution con **Pedido listo**.\n\n**Pedido creado · reservado** recoge el resto de pedidos creados. Junto con **Cambio de mesa** y **Otros eventos**, queda sin acciones.\n\nLos textos dinámicos de Telegram se escapan para no interpretar etiquetas HTML.",
+        "height": 220,
+        "width": 450
+      },
+      "id": "192aa8c3-910b-4b46-9e2f-83d9a0800010",
+      "name": "Ampliaciones futuras",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-300, 560]
+    }
+  ],
+  "connections": {
+    "Recibir eventos de la API": {
+      "main": [
+        [
+          {
+            "node": "¿Viene de la API?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Viene de la API?": {
+      "main": [
+        [
+          {
+            "node": "Distribuir eventos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Distribuir eventos": {
+      "main": [
+        [
+          {
+            "node": "Normalizar teléfono",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar al personal por Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar de stock al dueño",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar de opinión al dueño",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalizar teléfono",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    "Normalizar teléfono": {
+      "main": [
+        [
+          {
+            "node": "Avisar por WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid"
+  },
+  "pinData": {},
+  "tags": []
+}
