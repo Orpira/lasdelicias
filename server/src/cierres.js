@@ -71,6 +71,29 @@ async function cierreGuardado(conexion, fecha) {
 	return rows[0] ?? null;
 }
 
+async function detallePendientes(conexion, fecha) {
+	const { rows: [datos] } = await conexion.query(
+		`WITH pendientes_pedidos AS (
+			SELECT COALESCE(jsonb_agg(jsonb_build_object(
+				'id', id, 'numero_dia', numero_dia, 'nombre_cliente', nombre_cliente,
+				'tipo', tipo, 'total', total, 'estado', estado
+			) ORDER BY created_at, id), '[]'::jsonb) AS detalle
+			FROM pedidos
+			WHERE fecha = $1::date AND estado = 'entregado' AND pagado_at IS NULL
+		), pendientes_cuentas AS (
+			SELECT COALESCE(jsonb_agg(jsonb_build_object(
+				'id', id, 'mesa_numero', mesa_numero, 'total', total
+			) ORDER BY abierta_at, id), '[]'::jsonb) AS detalle
+			FROM cuentas
+			WHERE estado = 'abierta' AND (abierta_at AT TIME ZONE $2)::date = $1::date
+		)
+		SELECT (SELECT detalle FROM pendientes_pedidos) AS pedidos,
+			(SELECT detalle FROM pendientes_cuentas) AS cuentas`,
+		[fecha, config.zonaHoraria],
+	);
+	return datos;
+}
+
 async function calcularResumen(conexion, fecha, incluyeListos) {
 	const { rows: [datos] } = await conexion.query(
 		`WITH del_dia AS MATERIALIZED (
@@ -187,7 +210,17 @@ export async function consultarCierre(fecha, consulta = {}) {
 		await conexion.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
 		const contexto = await contextoCierre(conexion);
 		const guardado = await cierreGuardado(conexion, dia);
-		if (guardado) return informe(guardado.resumen, contexto, guardado);
+		if (guardado) {
+			const detalle = await detallePendientes(conexion, dia);
+			return informe({
+				...guardado.resumen,
+				pendiente_cobro: {
+					...guardado.resumen.pendiente_cobro,
+					pedidos: detalle.pedidos,
+					cuentas: detalle.cuentas,
+				},
+			}, contexto, guardado);
+		}
 		return informe(await calcularResumen(conexion, dia, incluye_listos ?? contexto.incluyeListos), contexto);
 	});
 }
