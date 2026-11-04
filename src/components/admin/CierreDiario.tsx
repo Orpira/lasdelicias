@@ -104,6 +104,11 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 			{aviso && <p role="status" className="mb-4 rounded-xl bg-green-50 p-4 font-semibold text-green-800 print:hidden">{aviso}</p>}
 
 			{informe && resumen && <article aria-label="Informe de cierre diario" className="rounded-2xl border border-delicias/15 bg-white p-4 shadow-sm md:p-6 print:border-0 print:p-0 print:shadow-none">
+				{(() => {
+					const pendientes = resumen.pendiente_cobro;
+					const pedidosPendientes = pendientes.pedidos ?? [];
+					const cuentasPendientes = pendientes.cuentas ?? [];
+					return <>
 				<p className="mb-4 flex items-center gap-2 font-bold text-delicias">
 					{informe.guardado ? <LockKeyhole className="h-5 w-5" aria-hidden="true" /> : <CalendarDays className="h-5 w-5" aria-hidden="true" />}
 					{informe.guardado ? "Cierre guardado" : "Vista previa sin guardar"}
@@ -126,13 +131,13 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 				{(resumen.pendiente_cobro.entregados_sin_cobrar.pedidos || resumen.pendiente_cobro.cuentas_abiertas.pedidos) > 0 && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
 					<strong>Pendiente de cobro:</strong> {resumen.pendiente_cobro.entregados_sin_cobrar.pedidos} entregados y {resumen.pendiente_cobro.cuentas_abiertas.pedidos} cuentas abiertas. <Link className="font-bold underline" to="/admin/barra">Ir a Barra para cobrar</Link>
 				</p>}
-				{(resumen.pendiente_cobro.pedidos.length || resumen.pendiente_cobro.cuentas.length) > 0 && <section className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
+				{(pedidosPendientes.length || cuentasPendientes.length) > 0 && <section className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
 					<h2 className="font-extrabold">Detalle de pendientes de cobro</h2>
 					<div className="mt-2 grid gap-2 sm:grid-cols-2">
-						{resumen.pendiente_cobro.pedidos.map((pedido) => <p key={pedido.id} className="rounded-lg bg-white p-3">
+						{pedidosPendientes.map((pedido) => <p key={pedido.id} className="rounded-lg bg-white p-3">
 							<strong>Pedido #{pedido.numero_dia}</strong> · {pedido.nombre_cliente} · {pedido.tipo === "whatsapp" ? "WhatsApp" : pedido.tipo === "recoger" ? "Para recoger" : "Mesa"} · <strong>{euros(pedido.total)}</strong>
 						</p>)}
-						{resumen.pendiente_cobro.cuentas.map((cuenta) => <p key={cuenta.id} className="rounded-lg bg-white p-3">
+						{cuentasPendientes.map((cuenta) => <p key={cuenta.id} className="rounded-lg bg-white p-3">
 							<strong>Cuenta mesa {cuenta.mesa_numero}</strong> · <strong>{euros(cuenta.total)}</strong>
 						</p>)}
 					</div>
@@ -153,6 +158,8 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 				</section>
 				<div className="mt-6"><TablaVentas titulo="Ventas por hora" filas={resumen.por_hora.map((fila) => ({ ...fila, nombre: `${String(fila.hora).padStart(2, "0")}:00` }))} /></div>
 				{informe.cerrado_at && <p className="mt-5 text-sm text-tinta/70">Guardado el {new Date(informe.cerrado_at).toLocaleString("es-ES", { timeZone: resumen.zona_horaria })} · {informe.origen === "n8n" ? "Automatización n8n" : "Administración"}</p>}
+					</>;
+				})()}
 			</article>}
 			{informe && <div className="mt-5 flex flex-wrap gap-3 print:hidden">
 				{esAdmin && !informe.guardado && <button onClick={guardar} disabled={ocupado}
