@@ -66,7 +66,10 @@ export async function pendientesDeCobro() {
 			`SELECT id, codigo, numero_dia, nombre_cliente, tipo, estado, total, created_at, pagado_at, metodo_pago,
 				(p.fecha < (now() AT TIME ZONE $1)::date) AS de_dias_anteriores
 			 FROM pedidos p
-			 WHERE tipo IN ('recoger','whatsapp') AND estado = 'entregado' AND pagado_at IS NULL
+			 WHERE estado = 'entregado' AND pagado_at IS NULL
+			   AND (tipo IN ('recoger','whatsapp') OR (tipo = 'mesa' AND NOT EXISTS (
+				   SELECT 1 FROM cuentas c WHERE c.id = p.cuenta_id AND c.estado = 'abierta'
+			   )))
 			 ORDER BY created_at, id`,
 			[config.zonaHoraria],
 		),
@@ -151,9 +154,15 @@ export async function cobrarPedido(id, datos) {
 		await bloquearCuentas(conexion);
 		const { rows: [pedido] } = await conexion.query("SELECT * FROM pedidos WHERE id = $1 FOR UPDATE", [identificador]);
 		if (!pedido) throw new ErrorOperacion("Pedido no encontrado", 404);
-		if (pedido.tipo === "mesa") throw new ErrorOperacion("Los pedidos de mesa se cobran por su cuenta", 409);
 		if (pedido.pagado_at) throw new ErrorOperacion("Este pedido ya está cobrado", 409);
 		if (pedido.estado === "cancelado") throw new ErrorOperacion("Un pedido cancelado no se puede cobrar", 409);
+		if (pedido.tipo === "mesa") {
+			const { rows: cuentasAbiertas } = await conexion.query(
+				"SELECT 1 FROM cuentas WHERE id = $1 AND estado = 'abierta'",
+				[pedido.cuenta_id],
+			);
+			if (cuentasAbiertas.length) throw new ErrorOperacion("Los pedidos de mesa se cobran por su cuenta abierta", 409);
+		}
 		if (!["listo", "entregado"].includes(pedido.estado) && !forzar) {
 			throw new ErrorOperacion("El pedido todavía no está listo. Confirma su entrega para cobrarlo.", 409);
 		}

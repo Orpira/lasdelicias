@@ -111,7 +111,7 @@ export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => 
 						</button>)}
 						{pendientes.pedidos.map((pedido) => <div key={pedido.id} className="rounded-xl bg-white p-4">
 							<p className="mb-1 font-bold">Pedido #{pedido.numero_dia} · {pedido.nombre_cliente} · {euros(pedido.total)}</p>
-							<p className="mb-3 text-sm text-tinta/70">{pedido.tipo === "whatsapp" ? "WhatsApp" : "Para llevar"} · entregado sin cobrar</p>
+							<p className="mb-3 text-sm text-tinta/70">{pedido.tipo === "whatsapp" ? "WhatsApp" : pedido.tipo === "mesa" ? "Mesa (recuperación)" : "Para llevar"} · entregado sin cobrar</p>
 							<BotonesCobro alCobrar={(metodo) => cobrarPedido(pedido, metodo)} bloqueado={cobrando !== null} titulo={`Cobrar pedido #${pedido.numero_dia}`} />
 						</div>)}
 						{pendientes.total_anteriores > 0 && <details className="rounded-xl border border-orange-200 bg-orange-100/60 p-3">
@@ -123,7 +123,7 @@ export default function PanelPedidos({ alCaducar, esAdmin }: { alCaducar: () => 
 								</button>)}
 								{pendientes.anteriores.pedidos.map((pedido) => <div key={pedido.id} className="rounded-xl bg-white p-4">
 									<p className="mb-1 font-bold">Pedido #{pedido.numero_dia} · {pedido.nombre_cliente} · {euros(pedido.total)}</p>
-									<p className="mb-3 text-sm text-tinta/70">{pedido.tipo === "whatsapp" ? "WhatsApp" : "Para llevar"} · entregado sin cobrar</p>
+									<p className="mb-3 text-sm text-tinta/70">{pedido.tipo === "whatsapp" ? "WhatsApp" : pedido.tipo === "mesa" ? "Mesa (recuperación)" : "Para llevar"} · entregado sin cobrar</p>
 									<BotonesCobro alCobrar={(metodo) => cobrarPedido(pedido, metodo)} bloqueado={cobrando !== null} titulo={`Cobrar pedido #${pedido.numero_dia}`} />
 								</div>)}
 							</div>
