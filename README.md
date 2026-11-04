@@ -47,6 +47,7 @@ npm run dev
 
 - **Backend en el servidor**: un comando con `server/deploy/instalar.sh`; detalles en [server/DESPLIEGUE.md](server/DESPLIEGUE.md).
 - **Frontend en Vercel**: importar el repo, framework Vite, variable `VITE_API_URL=https://api-delicias.orpira.es`. `vercel.json` ya resuelve las rutas del SPA.
+- **Administración remota de PostgreSQL**: usar pgAdmin 4 o DBeaver mediante túnel SSH; consulta la [guía de administración remota de la base de datos](server/ADMINISTRAR_BD_REMOTA.md).
 
 ## Nombres de mesa
 

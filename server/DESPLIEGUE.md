@@ -3,6 +3,11 @@
 Servidor: 2 vCPU · 4 GB RAM · Ubuntu/Debian con Docker · IPv4 `167.233.139.93`.
 Consumo esperado: Postgres + API ≈ 150–250 MB de RAM; cabe holgado junto a n8n.
 
+## Administración remota de PostgreSQL
+
+PostgreSQL no se expone públicamente. Para administrarlo con pgAdmin 4 o
+DBeaver, usa un túnel SSH siguiendo la [guía de administración remota](ADMINISTRAR_BD_REMOTA.md).
+
 ## Endurecimiento de seguridad (migración 012)
 
 Al desplegar esta versión, ten en cuenta lo siguiente:
