@@ -3,6 +3,17 @@
 Servidor: 2 vCPU · 4 GB RAM · Ubuntu/Debian con Docker · IPv4 `167.233.139.93`.
 Consumo esperado: Postgres + API ≈ 150–250 MB de RAM; cabe holgado junto a n8n.
 
+## Endurecimiento de seguridad (migración 012)
+
+Al desplegar esta versión, ten en cuenta lo siguiente:
+
+- **Hay que reimprimir todos los QR de mesa.** La migración `012_seguridad_tokens_idempotencia.sql` sustituye los tokens de 64 bits por tokens de 128 bits (32 hexadecimales) y regenera todos los existentes. Los QR antiguos dejan de funcionar al arrancar la API. En la pestaña **QR de mesas** del panel, descarga e imprime los nuevos.
+- **Antes de desplegar, reconfigura n8n.** Los eventos ya no llevan `X-Delicias-Secret`, sino una firma HMAC (ver [Conectar n8n](#5-conectar-n8n)). Un flujo antiguo dejará de aceptarlos.
+- **`TRUST_PROXY`** (por defecto `loopback,uniquelocal`) limita qué proxys pueden fijar la IP del cliente con `X-Forwarded-For`. Si el proxy no está en el mismo servidor ni en una red privada, indica su IP.
+- La API envía cabeceras de seguridad: HSTS de un año, CSP `default-src 'none'`, `nosniff`, `Referrer-Policy: no-referrer` y `frame-ancestors 'none'`. La web en Vercel las envía en [vercel.json](../vercel.json).
+- `POST /pedidos` y `POST /n8n/pedidos` admiten la cabecera `Idempotency-Key` (16–128 caracteres `A-Za-z0-9_-`). Un reintento con la misma clave y el mismo contenido devuelve el pedido original con `200` y `Idempotent-Replayed: true`. Si la clave se reutiliza con otro contenido, responde `422`. La web genera la clave sola; desde n8n, envía una por mensaje de WhatsApp, por ejemplo el id del mensaje.
+- Las rutas públicas y las de n8n rechazan con `400` los campos desconocidos en el cuerpo.
+
 ## Cuentas y registro del cobro
 
 La app **no procesa pagos ni incorpora una pasarela**. El personal recibe el dinero en la caja del local y registra el cobro con **Efectivo**, **Tarjeta**, **Bizum** u **Otro**.
@@ -214,7 +225,13 @@ Comprueba: `curl https://api-delicias.orpira.es/negocio`.
 
 El flujo [las-delicias-eventos.json](n8n/las-delicias-eventos.json) está listo para importar en **n8n 1.x**. Usa nodos nativos con versiones contrastadas con n8n 1.100.1, sin extensiones comunitarias ni acceso a variables de entorno desde los nodos. Se importa **inactivo** y sin secretos reales.
 
-La API envía un POST JSON a `http://n8n:5678/webhook/las-delicias` con la cabecera `X-Delicias-Secret` y la fecha `enviado_en`. El Webhook responde **200 inmediatamente** para no superar los cinco segundos de espera de la API. El IF **¿Viene de la API?** comprueba el secreto antes de ejecutar acciones; su salida falsa queda desconectada. También rechaza cabeceras vacías y los marcadores `CAMBIAR_`.
+La API envía un POST JSON a `http://n8n:5678/webhook/las-delicias` **firmado con HMAC-SHA256** ([firma.js](src/firma.js)); el secreto no viaja en la petición. Cabeceras: `X-Delicias-Evento` (UUID, también en `body.evento_id`), `X-Delicias-Timestamp` (segundos Unix) y `X-Delicias-Firma: v1=<hex>`, calculada sobre `<timestamp>.<evento>.<cuerpo JSON>`. Si falta `N8N_WEBHOOK_SECRET`, la API no envía nada a n8n y lo registra como error. El Webhook responde **200 inmediatamente** para no superar los cinco segundos de espera de la API. Antes de ejecutar acciones:
+
+1. **Comprobar marca de tiempo** (Code, sin módulos ni variables de entorno) descarta marcas con más de ±5 minutos de diferencia, ids repetidos (anti-replay, recordados 10 minutos en los datos estáticos del flujo) y peticiones sin firma.
+2. **Calcular firma** (nodo nativo Crypto) calcula el HMAC con el secreto compartido.
+3. **¿Firma válida?** compara ambas firmas; su salida falsa queda desconectada.
+
+El reloj del servidor y el de n8n deben estar sincronizados (NTP). Los datos estáticos solo se conservan en ejecuciones de producción (flujo activo).
 
 | `tipo` | Cuándo | Contenido |
 |---|---|---|
@@ -261,7 +278,7 @@ El nodo **Normalizar teléfono** elimina espacios, guiones, paréntesis y `+`, c
 
 | Marcador | Dónde | Configuración |
 |---|---|---|
-| `CAMBIAR_SECRETO_COMPARTIDO` | IF **¿Viene de la API?**, valor derecho de la primera condición | El mismo `N8N_WEBHOOK_SECRET` del servidor |
+| `CAMBIAR_SECRETO_COMPARTIDO` | Campo **Secret** del nodo **Calcular firma** | El mismo `N8N_WEBHOOK_SECRET` del servidor |
 | `CAMBIAR_INSTANCIA_EVOLUTION` | URL de **Avisar por WhatsApp** | Nombre de la instancia conectada, codificado para URL si contiene caracteres especiales |
 | `CAMBIAR_CREDENCIAL_EVOLUTION` | Credencial de **Avisar por WhatsApp** | Selecciona la credencial Header Auth creada |
 | `CAMBIAR_CREDENCIAL_TELEGRAM` | Credencial de los tres nodos Telegram | Selecciona la credencial del bot creado |
@@ -269,10 +286,10 @@ El nodo **Normalizar teléfono** elimina espacios, guiones, paréntesis y `+`, c
 | `CAMBIAR_CHAT_ID_DUENO` | **Avisar de stock al dueño** y **Avisar de opinión al dueño** | `chat_id` privado del dueño en ambos nodos |
 
 3. La API, n8n y `evolution-api` deben compartir una red Docker donde se resuelvan los nombres `n8n` y `evolution-api`. La API ya se une a la red externa `PROXY_NETWORK` de [docker-compose.yml](docker-compose.yml); une también esos servicios a esa red si aún no la comparten. No hace falta publicar los puertos 5678 ni 8080 en Internet.
-4. Comprueba la configuración de despliegue del servidor: `N8N_WEBHOOK_URL=http://n8n:5678/webhook/las-delicias` y el secreto compartido. Si el instalador ya generó `N8N_WEBHOOK_SECRET`, conserva ese valor y cópialo al IF. No lo confundas con `N8N_API_KEY` (n8n → API) ni con la clave de Evolution.
+4. Comprueba la configuración de despliegue del servidor: `N8N_WEBHOOK_URL=http://n8n:5678/webhook/las-delicias` y el secreto compartido. Si el instalador ya generó `N8N_WEBHOOK_SECRET`, conserva ese valor y cópialo al nodo **Calcular firma**. No lo confundas con `N8N_API_KEY` (n8n → API) ni con la clave de Evolution.
 5. Guarda el flujo y **actívalo** cuando las credenciales y los marcadores estén configurados. Evita tener otro workflow activo con el mismo método POST y path `las-delicias`.
 
-No se incluyen reintentos automáticos para evitar WhatsApps duplicados. Los errores de Telegram, Evolution o normalización detienen la ejecución y se revisan en **Ejecuciones** de n8n. Protege el acceso a n8n y limita la conservación de ejecuciones: sus datos pueden contener teléfonos, comentarios y la cabecera del secreto. No vuelvas a guardar en Git una exportación con el secreto ya configurado.
+No se incluyen reintentos automáticos para evitar WhatsApps duplicados. Los errores de Telegram, Evolution o normalización detienen la ejecución y se revisan en **Ejecuciones** de n8n. Protege el acceso a n8n y limita la conservación de ejecuciones: sus datos pueden contener teléfonos, nombres y comentarios (la firma no revela el secreto). Configura `EXECUTIONS_DATA_PRUNE=true` y `EXECUTIONS_DATA_MAX_AGE` (p. ej. 168 horas) en n8n. No vuelvas a guardar en Git una exportación con el secreto ya configurado.
 
 ### Probar con curl
 
@@ -281,22 +298,23 @@ Esta prueba **envía un aviso real de stock al dueño**. Usa datos ficticios y c
 ```bash
 read -r -s -p 'Secreto de N8N_WEBHOOK_SECRET: ' DELICIAS_SECRET
 printf '\n'
+EVENTO=$(cat /proc/sys/kernel/random/uuid)
+TS=$(date +%s)
+CUERPO='{"tipo":"stock.bajo","id":"00000000-0000-4000-8000-000000000001","nombre":"Producto de prueba","stock":2,"stock_minimo":5,"evento_id":"'"${EVENTO}"'","enviado_en":"2026-01-01T12:00:00.000Z"}'
+FIRMA=$(printf '%s' "${TS}.${EVENTO}.${CUERPO}" | openssl dgst -sha256 -hmac "${DELICIAS_SECRET}" -hex | sed 's/^.* //')
 curl --fail-with-body --include --request POST \
   'https://CAMBIAR_DOMINIO_N8N/webhook/las-delicias' \
   --header 'Content-Type: application/json' \
-  --header "X-Delicias-Secret: ${DELICIAS_SECRET}" \
-  --data-binary '{
-    "tipo": "stock.bajo",
-    "id": "00000000-0000-4000-8000-000000000001",
-    "nombre": "Producto de prueba",
-    "stock": 2,
-    "stock_minimo": 5,
-    "enviado_en": "2026-01-01T12:00:00.000Z"
-  }'
+  --header "X-Delicias-Evento: ${EVENTO}" \
+  --header "X-Delicias-Timestamp: ${TS}" \
+  --header "X-Delicias-Firma: v1=${FIRMA}" \
+  --data-binary "${CUERPO}"
 unset DELICIAS_SECRET
 ```
 
-Debes recibir **HTTP 200** inmediatamente y el dueño, `📦 Quedan 2 de Producto de prueba (mínimo 5)`. Repite con una cabecera `X-Delicias-Secret: secreto-incorrecto`: también recibirás 200, pero **no debe enviarse ningún mensaje**. Un 200 confirma recepción, no autenticación ni entrega; comprueba el aviso y los posibles errores en Ejecuciones.
+El cuerpo debe ir en una sola línea y sin espacios, igual que lo serializa la API (`JSON.stringify`), porque n8n vuelve a serializarlo para comprobar la firma.
+
+Debes recibir **HTTP 200** inmediatamente y el dueño, `📦 Quedan 2 de Producto de prueba (mínimo 5)`. Repite **exactamente la misma petición** (replay) y otra con un secreto incorrecto: también recibirás 200, pero **no debe enviarse ningún mensaje**. Un 200 confirma recepción, no autenticación ni entrega; comprueba el aviso y los posibles errores en Ejecuciones.
 
 Para una prueba manual sin activar el flujo, pulsa **Listen for test event** en el Webhook y usa `/webhook-test/las-delicias` en lugar de `/webhook/las-delicias`. La URL de producción necesita el flujo activo. El nombre interno `http://n8n:5678` solo se resuelve desde su red Docker; úsalo en curl únicamente desde un contenedor de esa red. Las pruebas de WhatsApp deben usar un teléfono propio y un evento `pedido.estado` con estado `listo`, tipo `recoger` o `whatsapp` y los datos del pedido.
 

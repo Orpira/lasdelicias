@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
@@ -15,13 +16,26 @@ import rutasN8n from "./rutas/n8n.js";
 
 const app = Fastify({
 	logger: { level: process.env.LOG_LEVEL ?? "info" },
-	trustProxy: true, // detrás de Caddy/Nginx: IP real para el límite de peticiones
+	// Solo se cree X-Forwarded-For si llega desde el proxy (loopback o red Docker privada):
+	// así nadie puede falsear su IP para saltarse el límite de peticiones
+	trustProxy: config.trustProxy,
 	bodyLimit: 64 * 1024,
 });
 
 await app.register(cors, {
 	origin: config.corsOrigenes,
 	methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+});
+// Cabeceras de seguridad. Es una API JSON: nada se ejecuta ni se incrusta desde ella,
+// salvo las fotos de /uploads, que la web (otro origen) muestra → CORP cross-origin
+await app.register(helmet, {
+	contentSecurityPolicy: {
+		useDefaults: false,
+		directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"], formAction: ["'none'"] },
+	},
+	crossOriginResourcePolicy: { policy: "cross-origin" },
+	hsts: { maxAge: 31_536_000, includeSubDomains: true, preload: false },
+	referrerPolicy: { policy: "no-referrer" },
 });
 await app.register(rateLimit, { global: false });
 await app.register(jwt, { secret: config.jwtSecret });

@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { query, transaccion } from "./db.js";
 import { config } from "./config.js";
 import { asegurarCuentaAbierta, bloquearCuentas } from "./cuentas.js";
@@ -61,17 +61,53 @@ function codigoPublico() {
  * Crea un pedido. Los precios SIEMPRE se toman de la base de datos,
  * nunca de lo que envíe el cliente.
  */
-export async function crearPedido({ items, nombre, telefono, tipo, mesaToken, dispositivo, horaRecogida, notas }) {
-	// Agrupa líneas repetidas del mismo producto
+export async function crearPedido(datos) {
+	return (await crearPedidoIdempotente(datos)).pedido;
+}
+
+function agruparCantidades(items) {
 	const cantidades = new Map();
 	for (const it of items) {
 		cantidades.set(it.producto_id, (cantidades.get(it.producto_id) ?? 0) + it.cantidad);
 	}
+	return cantidades;
+}
+
+/** Huella del contenido del pedido: la misma Idempotency-Key no puede reutilizarse para otro pedido. */
+export function huellaPedido({ items, nombre, telefono, tipo, mesaToken, horaRecogida, notas }) {
+	const lineas = [...agruparCantidades(items)].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+	const contenido = JSON.stringify([tipo, lineas, nombre, telefono ?? "", mesaToken ?? "", horaRecogida ?? "", notas ?? ""]);
+	return createHash("sha256").update(contenido).digest("hex");
+}
+
+/**
+ * Como crearPedido, pero si se indica una clave de idempotencia y ya existe un pedido
+ * con ella, devuelve ese pedido ({ repetido: true }) en lugar de crear otro.
+ */
+export async function crearPedidoIdempotente(datos, claveIdempotencia = null) {
+	const { items, nombre, telefono, tipo, mesaToken, dispositivo, horaRecogida, notas } = datos;
+	// Agrupa líneas repetidas del mismo producto
+	const cantidades = agruparCantidades(items);
 	for (const c of cantidades.values()) {
 		if (c > 50) throw new ErrorPedido("Máximo 50 unidades por producto");
 	}
+	const huella = claveIdempotencia ? huellaPedido(datos) : null;
 
-	return transaccion(async (client) => {
+	const resultado = await transaccion(async (client) => {
+		if (claveIdempotencia) {
+			// Dos reintentos simultáneos con la misma clave se ejecutan uno detrás de otro
+			await client.query("SELECT pg_advisory_xact_lock(727003, hashtext($1))", [claveIdempotencia]);
+			const { rows: [previo] } = await client.query(
+				"SELECT id, idempotencia_huella FROM pedidos WHERE idempotencia_clave = $1",
+				[claveIdempotencia],
+			);
+			if (previo) {
+				if (previo.idempotencia_huella !== huella) {
+					throw new ErrorPedido("Esta Idempotency-Key ya se usó para un pedido distinto", 422);
+				}
+				return { id: previo.id, repetido: true };
+			}
+		}
 		await bloquearCuentas(client);
 		const { rows: [negocio] } = await client.query("SELECT datos, clock_timestamp() AS instante FROM negocio WHERE id = 1 FOR SHARE");
 		if (!negocio) throw new ErrorPedido("No existe la ficha del negocio para consultar su horario", 500);
@@ -161,13 +197,15 @@ export async function crearPedido({ items, nombre, telefono, tipo, mesaToken, di
 		const { rows: [pedido] } = await client.query(
 			`INSERT INTO pedidos (codigo, fecha, numero_dia, cliente_id, nombre_cliente, telefono,
 			                      tipo, mesa_numero, hora_recogida, notas, total,
-			                      dispositivo, mesa_anterior, cambio_mesa, cuenta_id, fuera_horario, atender_desde)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, round($11::numeric, 2), $12, $13, $14, $15, $16, $17)
+			                      dispositivo, mesa_anterior, cambio_mesa, cuenta_id, fuera_horario, atender_desde,
+			                      idempotencia_clave, idempotencia_huella)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, round($11::numeric, 2), $12, $13, $14, $15, $16, $17, $18, $19)
 			 RETURNING id`,
 			[
 				codigoPublico(), dia.fecha, dia.numero, clienteId, nombre, telefono ?? "",
 				tipo, mesa, horaRecogida ?? null, notas ?? "", total,
 				dispositivo ?? null, mesaAnterior, mesaAnterior ? "detectado" : null, cuentaId, !abierto, apertura?.inicio ?? null,
+				claveIdempotencia, huella,
 			],
 		);
 
@@ -186,8 +224,9 @@ export async function crearPedido({ items, nombre, telefono, tipo, mesaToken, di
 				[pedido.id, id, p.nombre, p.precio, cantidades.get(id)],
 			);
 		}
-		return pedido.id;
-	}).then(obtenerPedidoPorId);
+		return { id: pedido.id, repetido: false };
+	});
+	return { pedido: await obtenerPedidoPorId(resultado.id), repetido: resultado.repetido };
 }
 
 const TRANSICIONES = {

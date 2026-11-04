@@ -4,11 +4,11 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { query } from "../db.js";
 import { config } from "../config.js";
-import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, esquemaOpinion, esquemaInicioStreamMesa, esquemaConsultaHorario, tokenMesa, validar } from "../esquemas.js";
+import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, esquemaOpinion, esquemaInicioStreamMesa, esquemaConsultaHorario, claveIdempotencia, tokenMesa, validar } from "../esquemas.js";
 import { estadoHorario } from "../horario.js";
 import {
 	cambiarDeMesa,
-	crearPedido,
+	crearPedidoIdempotente,
 	obtenerPedidoPorCodigo,
 	pedidosEnOtraMesa,
 	vistaPublica,
@@ -122,7 +122,8 @@ export default async function rutasPublicas(app) {
 		{ config: { rateLimit: { max: 60, timeWindow: "10 minutes" } } },
 		async (request, reply) => {
 			const datos = validar(esquemaNuevoPedido, request.body);
-			const pedido = await crearPedido({
+			const clave = claveIdempotencia(request.headers);
+			const { pedido, repetido } = await crearPedidoIdempotente({
 				items: datos.items,
 				nombre: datos.nombre,
 				telefono: datos.telefono,
@@ -131,8 +132,9 @@ export default async function rutasPublicas(app) {
 				dispositivo: datos.dispositivo,
 				horaRecogida: datos.hora_recogida,
 				notas: datos.notas,
-			});
-			return reply.code(201).send(vistaPublica(pedido));
+			}, clave);
+			if (repetido) reply.header("Idempotent-Replayed", "true");
+			return reply.code(repetido ? 200 : 201).send(vistaPublica(pedido));
 		},
 	);
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, euros, hora } from "../lib/api";
 import { useCarrito } from "../lib/carrito";
@@ -47,6 +47,9 @@ export default function Pedido() {
 	const [cuando, setCuando] = useState<"ya" | "hora">("ya");
 	const [horaElegida, setHoraElegida] = useState("");
 	const [notas, setNotas] = useState("");
+	// Reintentar el mismo pedido (p. ej. tras un corte de red) reutiliza su Idempotency-Key:
+	// si el servidor ya lo había creado, devuelve ese pedido en lugar de duplicarlo
+	const ultimoIntento = useRef<{ contenido: string; clave: string } | null>(null);
 	const [enviando, setEnviando] = useState(false);
 	const [error, setError] = useState("");
 
@@ -80,18 +83,22 @@ export default function Pedido() {
 
 		setEnviando(true);
 		try {
+			const cuerpo = {
+				items: carrito.lineas.map((l) => ({ producto_id: l.producto.id, cantidad: l.cantidad })),
+				nombre,
+				telefono: telefono.trim() || undefined,
+				tipo,
+				mesa_token: tipo === "mesa" ? carrito.mesaToken : undefined,
+				dispositivo: idDispositivo(),
+				hora_recogida,
+				notas: notas.trim() || undefined,
+			};
+			const contenido = JSON.stringify(cuerpo);
+			if (ultimoIntento.current?.contenido !== contenido) ultimoIntento.current = { contenido, clave: crypto.randomUUID() };
 			const pedido = await api<TPedido>("/pedidos", {
 				metodo: "POST",
-				cuerpo: {
-					items: carrito.lineas.map((l) => ({ producto_id: l.producto.id, cantidad: l.cantidad })),
-					nombre,
-					telefono: telefono.trim() || undefined,
-					tipo,
-					mesa_token: tipo === "mesa" ? carrito.mesaToken : undefined,
-					dispositivo: idDispositivo(),
-					hora_recogida,
-					notas: notas.trim() || undefined,
-				},
+				cuerpo,
+				cabeceras: { "Idempotency-Key": ultimoIntento.current.clave },
 			});
 			try {
 				if (recordarDatos) localStorage.setItem(CLAVE_CLIENTE, JSON.stringify({ nombre, telefono }));

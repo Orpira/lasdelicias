@@ -2,10 +2,10 @@
 // Se autentican con la cabecera X-Api-Key = N8N_API_KEY.
 import { timingSafeEqual } from "node:crypto";
 import { config } from "../config.js";
-import { esquemaEstado, esquemaGuardarCierre, esquemaPedidoN8n, esquemaStockExterno, validar } from "../esquemas.js";
+import { claveIdempotencia, esquemaEstado, esquemaGuardarCierre, esquemaPedidoN8n, esquemaStockExterno, validar } from "../esquemas.js";
 import { consultarCierre, guardarCierre } from "../cierres.js";
 import { aplicarStockExterno } from "../tpv/index.js";
-import { cambiarEstado, crearPedido, obtenerPedidoPorCodigo } from "../pedidos-servicio.js";
+import { cambiarEstado, crearPedidoIdempotente, obtenerPedidoPorCodigo } from "../pedidos-servicio.js";
 
 function claveValida(recibida) {
 	if (!config.n8nApiKey || typeof recibida !== "string") return false;
@@ -24,15 +24,18 @@ export default async function rutasN8n(app) {
 	// Crear un pedido recibido por WhatsApp (el precio lo calcula la API)
 	app.post("/n8n/pedidos", async (request, reply) => {
 		const d = validar(esquemaPedidoN8n, request.body);
-		const pedido = await crearPedido({
+		// n8n reintenta si falla la red: con Idempotency-Key el reintento no duplica el pedido
+		const clave = claveIdempotencia(request.headers);
+		const { pedido, repetido } = await crearPedidoIdempotente({
 			items: d.items,
 			nombre: d.nombre,
 			telefono: d.telefono,
 			tipo: "whatsapp",
 			horaRecogida: d.hora_recogida,
 			notas: d.notas,
-		});
-		return reply.code(201).send(pedido);
+		}, clave);
+		if (repetido) reply.header("Idempotent-Replayed", "true");
+		return reply.code(repetido ? 200 : 201).send(pedido);
 	});
 
 	// Puente con cualquier caja: n8n lee el stock del TPV y lo envía aquí

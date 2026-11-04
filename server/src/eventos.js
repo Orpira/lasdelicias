@@ -1,12 +1,13 @@
 // Bus de eventos: escucha el canal "delicias" de Postgres y reparte cada evento
 //  - al panel del local (SSE, personal autenticado)
 //  - al seguimiento del cliente (SSE, por código de pedido)
-//  - a n8n (webhook HTTP firmado con un secreto compartido)
+//  - a n8n (webhook HTTP firmado con HMAC-SHA256, marca de tiempo e id de evento; ver firma.js)
 import pg from "pg";
 import { config } from "./config.js";
 import { obtenerPedidoPorId, vistaPublica } from "./pedidos-servicio.js";
 import { query } from "./db.js";
 import { obtenerCuenta } from "./cuentas.js";
+import { firmarEvento } from "./firma.js";
 
 const clientesPanel = new Set(); // respuestas SSE del personal
 const clientesSeguimiento = new Map(); // codigo -> Set de respuestas SSE
@@ -58,16 +59,22 @@ export function suscribirMesa(numero, token, raw) {
 	});
 }
 
+let avisadoSinSecreto = false;
+
 async function enviarAN8n(evento, log) {
 	if (!config.n8nWebhookUrl) return;
+	// Sin secreto no se puede firmar: no se envían datos personales sin autenticar
+	if (!config.n8nWebhookSecret) {
+		if (!avisadoSinSecreto) log.error("N8N_WEBHOOK_URL está configurada pero falta N8N_WEBHOOK_SECRET: no se envían eventos a n8n");
+		avisadoSinSecreto = true;
+		return;
+	}
 	try {
+		const { cuerpo, cabeceras } = firmarEvento(config.n8nWebhookSecret, evento);
 		const res = await fetch(config.n8nWebhookUrl, {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"X-Delicias-Secret": config.n8nWebhookSecret,
-			},
-			body: JSON.stringify({ ...evento, enviado_en: new Date().toISOString() }),
+			headers: cabeceras,
+			body: cuerpo,
 			signal: AbortSignal.timeout(5_000),
 		});
 		if (!res.ok) log.warn({ status: res.status, tipo: evento.tipo }, "n8n respondió con error");

@@ -32,6 +32,9 @@ export const config = {
 		.map((o) => o.trim().replace(/\/$/, ""))
 		.filter(Boolean)
 		.map(origenConComodin),
+	// Proxys de confianza para X-Forwarded-For (IPs, CIDR o loopback/linklocal/uniquelocal).
+	// Por defecto: el propio servidor y las redes privadas de Docker (Nginx Proxy Manager, Caddy…)
+	trustProxy: (process.env.TRUST_PROXY ?? "loopback,uniquelocal").trim() || false,
 	// URL pública de la API, para construir las URLs de las imágenes subidas
 	urlPublica: (process.env.PUBLIC_URL ?? "http://localhost:3001").replace(/\/$/, ""),
 	uploadsDir: process.env.UPLOADS_DIR ?? "./uploads",

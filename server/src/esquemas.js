@@ -9,16 +9,20 @@ const telefono = z
 export const CATEGORIAS = ["Desayunos", "Almuerzos", "Comida casera", "Pastelería", "Bebidas"];
 export const ESTADOS = ["nuevo", "preparando", "listo", "entregado", "cancelado"];
 
+// Las rutas públicas y las de n8n usan esquemas estrictos: un campo desconocido es un 400
+const lineaPedido = z.strictObject({ producto_id: z.uuid(), cantidad: z.number().int().min(1).max(50) });
+export const PATRON_TOKEN_MESA = /^[a-f0-9]{32}$/;
+
 export const esquemaNuevoPedido = z
-	.object({
+	.strictObject({
 		items: z
-			.array(z.object({ producto_id: z.uuid(), cantidad: z.number().int().min(1).max(50) }))
+			.array(lineaPedido)
 			.min(1, "El pedido está vacío")
 			.max(40),
 		nombre: z.string().trim().min(1, "Falta el nombre").max(60),
 		telefono: telefono.optional(),
 		tipo: z.enum(["mesa", "recoger"]),
-		mesa_token: z.string().regex(/^[a-f0-9]{16}$/, "Código de mesa no válido").optional(),
+		mesa_token: z.string().regex(PATRON_TOKEN_MESA, "Código de mesa no válido").optional(),
 		dispositivo: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/).optional(),
 		hora_recogida: z.iso.datetime({ offset: true }).optional(),
 		notas: z.string().trim().max(300).optional(),
@@ -35,9 +39,9 @@ export const esquemaNuevoPedido = z
 	});
 
 // Pedidos que crea n8n (agente de WhatsApp): mismo formato, tipo "whatsapp"
-export const esquemaPedidoN8n = z.object({
+export const esquemaPedidoN8n = z.strictObject({
 	items: z
-		.array(z.object({ producto_id: z.uuid(), cantidad: z.number().int().min(1).max(50) }))
+		.array(lineaPedido)
 		.min(1)
 		.max(40),
 	nombre: z.string().trim().min(1).max(60),
@@ -46,7 +50,7 @@ export const esquemaPedidoN8n = z.object({
 	notas: z.string().trim().max(300).optional(),
 });
 
-export const esquemaEstado = z.object({ estado: z.enum(ESTADOS) });
+export const esquemaEstado = z.strictObject({ estado: z.enum(ESTADOS) });
 
 export const esquemaIdCuenta = z.string({ error: "Cuenta no válida" }).refine(
 	(valor) => /^[1-9]\d{0,18}$/.test(valor) && BigInt(valor) <= 9223372036854775807n,
@@ -83,7 +87,7 @@ export const esquemaConfiguracionCierre = z.strictObject({
 	cierre_incluye_listos: z.boolean({ error: "cierre_incluye_listos debe ser verdadero o falso" }),
 }, { error: "Indica únicamente cierre_incluye_listos" });
 
-export const esquemaLogin = z.object({
+export const esquemaLogin = z.strictObject({
 	email: z.email().transform((e) => e.toLowerCase()),
 	password: z.string().min(1).max(200),
 });
@@ -112,10 +116,10 @@ export const esquemaProducto = z.object({
 });
 
 // Stock enviado por n8n desde la caja: [{ codigo_tpv, stock }]
-export const esquemaStockExterno = z.object({
+export const esquemaStockExterno = z.strictObject({
 	origen: z.string().trim().min(1).max(30).default("n8n"),
 	articulos: z
-		.array(z.object({ codigo_tpv: z.string().trim().min(1).max(64), stock: z.number().min(0) }))
+		.array(z.strictObject({ codigo_tpv: z.string().trim().min(1).max(64), stock: z.number().min(0) }))
 		.min(1)
 		.max(5000),
 });
@@ -154,7 +158,7 @@ export const esquemaNegocio = z.object({
 		.default([]),
 });
 
-export const esquemaOpinion = z.object({
+export const esquemaOpinion = z.strictObject({
 	nombre: z.string().trim().min(1, "Escribe tu nombre").max(40),
 	puntuacion: z.number().int().min(1, "Elige de 1 a 5 estrellas").max(5),
 	comentario: z.string().trim().max(500, "Máximo 500 caracteres").default(""),
@@ -176,10 +180,21 @@ export const esquemaMesaCambio = z
 	})
 	.refine((c) => c.nombre !== undefined || c.activa !== undefined, "No hay cambios");
 
-export const esquemaLlamada = z.object({ motivo: z.enum(["atencion", "cuenta"]).default("atencion") });
+export const esquemaLlamada = z.strictObject({ motivo: z.enum(["atencion", "cuenta"]).default("atencion") });
 
-export const esquemaDispositivo = z.object({ dispositivo: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/) });
-export const tokenMesa = (t) => /^[a-f0-9]{16}$/.test(String(t));
+export const esquemaDispositivo = z.strictObject({ dispositivo: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/) });
+export const tokenMesa = (t) => PATRON_TOKEN_MESA.test(String(t));
+
+// Cabecera Idempotency-Key (p. ej. un UUID generado por el cliente para cada intento de pedido)
+export const esquemaClaveIdempotencia = z
+	.string({ error: "Idempotency-Key no válida" })
+	.regex(/^[A-Za-z0-9_-]{16,128}$/, "Idempotency-Key debe tener entre 16 y 128 caracteres alfanuméricos, - o _");
+
+/** Lee la cabecera Idempotency-Key: null si no viene, 400 si viene mal formada. */
+export function claveIdempotencia(cabeceras) {
+	const valor = cabeceras["idempotency-key"];
+	return valor === undefined ? null : validar(esquemaClaveIdempotencia, valor);
+}
 
 /** Valida y lanza un 400 con el primer mensaje legible si falla. */
 export function validar(esquema, datos) {
