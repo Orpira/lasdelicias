@@ -8,6 +8,7 @@ import QrMesas from "../components/admin/QrMesas";
 import PantallaCocina from "../components/admin/PantallaCocina";
 import ModeracionOpiniones from "../components/admin/ModeracionOpiniones";
 import CierreDiario from "../components/admin/CierreDiario";
+import FichaNegocio from "../components/admin/FichaNegocio";
 
 export interface Usuario {
 	sub?: string;
@@ -17,7 +18,7 @@ export interface Usuario {
 }
 
 // Cada pestaña tiene su dirección: /admin/barra, /admin/cocina, /admin/carta, /admin/mesas…
-const PESTANAS = ["barra", "cocina", "carta", "mesas", "opiniones", "cierres"] as const;
+const PESTANAS = ["barra", "cocina", "carta", "mesas", "opiniones", "cierres", "ficha"] as const;
 type Pestana = (typeof PESTANAS)[number];
 const esPestana = (p: unknown): p is Pestana => PESTANAS.includes(p as Pestana);
 
@@ -73,6 +74,7 @@ export default function Admin() {
 		{ id: "mesas", texto: "🪑 QR de mesas" },
 		{ id: "cierres", texto: "📊 Cierre diario" },
 		...(usuario.rol === "admin" ? [{ id: "opiniones" as const, texto: "⭐ Opiniones" }] : []),
+		...(usuario.rol === "admin" ? [{ id: "ficha" as const, texto: "🏪 Ficha del negocio" }] : []),
 	];
 
 	return (
@@ -102,6 +104,7 @@ export default function Admin() {
 			{pestana === "mesas" && <QrMesas esAdmin={usuario.rol === "admin"} />}
 			{pestana === "opiniones" && usuario.rol === "admin" && <ModeracionOpiniones />}
 			{pestana === "cierres" && <CierreDiario esAdmin={usuario.rol === "admin"} alCaducar={salir} />}
+			{pestana === "ficha" && usuario.rol === "admin" && <FichaNegocio alCaducar={salir} />}
 		</div>
 	);
 }

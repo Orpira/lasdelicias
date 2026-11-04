@@ -6,10 +6,11 @@ App de pedidos y atención en el local para Las Delicias (Calle Ayala, 28 · Má
 - **Mesas seguras**: cada QR lleva un código secreto (`/m/<código>`), así que nadie puede pedir "a otra mesa" cambiando un número en la URL. Si un móvil con un pedido en curso escanea otra mesa, se le pregunta si se ha cambiado; la barra ve el cambio declarado (🔄) o el sospechoso (⚠). Cada QR se puede regenerar desde el panel.
 - **Barra**: pedidos en tiempo real (nuevos → preparando → listos), avisos sonoros, llamadas de mesa, avisos de stock bajo.
 - **Cuentas y cobro**: una cuenta por visita de mesa, total en directo, métodos registrados por el personal y avisos de pendientes. La app no procesa pagos; el dinero se recibe en caja. Para llevar o WhatsApp se entregan y cobran con un toque.
-- **Cierre diario**: ventas por tipo, categoría, producto y hora, con criterio configurable entre pedidos entregados o entregados y listos para recoger. Incluye métodos de pago, pendientes, cuentas anuladas, CSV e impresión.
+- **Cierre diario**: ventas por tipo, categoría, producto y hora; una venta cuenta cuando el pedido está cobrado. Incluye métodos de pago, pendientes, cuentas anuladas, CSV e impresión.
 - **Pedidos fuera de horario**: para llevar y WhatsApp se aceptan estando cerrado, con confirmación inmediata y fecha y número del día de apertura. Barra los separa en programados; cocina y el pitido esperan a que puedan prepararse.
 - **Cocina (tablet)**: comandas por orden de llegada, filtradas por puesto (cocina, barra, pastelería), platos que se tachan al tocarlos, tiempos en colores, resumen de producción y pantalla siempre encendida.
 - **Carta**: agotados con un toque, productos y fotos, stock de envasados, enlace con la caja (TPV), hoja de QR imprimible.
+- **Ficha del negocio**: administración puede editar desde el panel el horario semanal, los días de cierre excepcional y los datos legales que alimentan las páginas públicas.
 - **Ecosistema**: los eventos (pedido creado, cambio de estado o de mesa, llamada de mesa, stock bajo) salen hacia **n8n**, que puede avisar por WhatsApp/Telegram, publicar en Instagram, atender pedidos por WhatsApp con IA o sincronizar el stock con la caja, usando la misma API.
 
 ## Arquitectura
@@ -22,7 +23,7 @@ Vercel ─ PWA React (este repo)                 Servidor Hetzner (docker compos
   /pedido      enviar pedido                    ├─ PostgreSQL 16 (LISTEN/NOTIFY → eventos)
   /pedido/:cod seguimiento en directo           ├─ backup diario (pg_dump, 14 días)
   /gracias/:id resumen tras cobrar la mesa      │    disponible durante 24 horas, sin datos personales
-  /admin       barra · cocina · carta · QR      ├─ n8n ◄── eventos firmados / ──► X-Api-Key
+  /admin       barra · cocina · carta · ficha    ├─ n8n ◄── eventos / ──► X-Api-Key
                                                 └─ caja (TPV) ──► stock de envasados (src/tpv/)
 ```
 
