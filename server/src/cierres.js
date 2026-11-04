@@ -97,7 +97,7 @@ async function detallePendientes(conexion, fecha) {
 async function calcularResumen(conexion, fecha, incluyeListos) {
 	const { rows: [datos] } = await conexion.query(
 		`WITH del_dia AS MATERIALIZED (
-			SELECT id, tipo, estado, total, created_at, pagado_at, metodo_pago
+			SELECT id, numero_dia, nombre_cliente, tipo, estado, total, created_at, pagado_at, metodo_pago
 			FROM pedidos WHERE fecha = $1::date
 		), ventas AS (
 			SELECT * FROM del_dia WHERE pagado_at IS NOT NULL AND estado <> 'cancelado'
