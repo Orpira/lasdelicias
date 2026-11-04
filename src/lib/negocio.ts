@@ -8,7 +8,7 @@ export interface Negocio {
 	nif?: string | null;
 	email_contacto?: string | null;
 	conservacion_meses?: number | null;
-	cierre_criterio?: "cobrados" | "entregados" | "entregados_y_listos";
+	cierre_incluye_listos?: boolean;
 	lema: string;
 	descripcion: string;
 	direccion: string;

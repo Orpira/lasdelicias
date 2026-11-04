@@ -246,8 +246,7 @@ export default async function rutasStaff(app) {
 
 			admin.put("/admin/negocio", async (request) => {
 				const datos = validar(esquemaNegocio, request.body);
-				// Los clientes antiguos de la ficha no deben restablecer un criterio que no enviaron.
-				if (!Object.hasOwn(request.body, "cierre_criterio")) delete datos.cierre_criterio;
+				if (!Object.hasOwn(request.body, "cierre_incluye_listos")) delete datos.cierre_incluye_listos;
 				const { rows } = await query(
 					"UPDATE negocio SET datos = datos || $1::jsonb WHERE id = 1 RETURNING datos, updated_at",
 					[datos],

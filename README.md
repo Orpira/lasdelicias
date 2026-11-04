@@ -6,7 +6,7 @@ App de pedidos y atención en el local para Las Delicias (Calle Ayala, 28 · Má
 - **Mesas seguras**: cada QR lleva un código secreto (`/m/<código>`), así que nadie puede pedir "a otra mesa" cambiando un número en la URL. Si un móvil con un pedido en curso escanea otra mesa, se le pregunta si se ha cambiado; la barra ve el cambio declarado (🔄) o el sospechoso (⚠). Cada QR se puede regenerar desde el panel.
 - **Barra**: pedidos en tiempo real (nuevos → preparando → listos), avisos sonoros, llamadas de mesa, avisos de stock bajo.
 - **Cuentas y cobro**: una cuenta por visita de mesa, total en directo, métodos registrados por el personal y avisos de pendientes. La app no procesa pagos; el dinero se recibe en caja. Para llevar o WhatsApp se entregan y cobran con un toque.
-- **Cierre diario**: ventas por tipo, categoría, producto y hora, con criterio configurable de cobro, entrega o entrega más listos. Incluye métodos de pago, pendientes, cuentas anuladas, CSV e impresión.
+- **Cierre diario**: ventas por tipo, categoría, producto y hora, con criterio configurable entre pedidos entregados o entregados y listos para recoger. Incluye métodos de pago, pendientes, cuentas anuladas, CSV e impresión.
 - **Cocina (tablet)**: comandas por orden de llegada, filtradas por puesto (cocina, barra, pastelería), platos que se tachan al tocarlos, tiempos en colores, resumen de producción y pantalla siempre encendida.
 - **Carta**: agotados con un toque, productos y fotos, stock de envasados, enlace con la caja (TPV), hoja de QR imprimible.
 - **Ecosistema**: los eventos (pedido creado, cambio de estado o de mesa, llamada de mesa, stock bajo) salen hacia **n8n**, que puede avisar por WhatsApp/Telegram, publicar en Instagram, atender pedidos por WhatsApp con IA o sincronizar el stock con la caja, usando la misma API.
@@ -66,11 +66,11 @@ Pruebas de integración: `npm --prefix server test`; con `DATABASE_URL_TEST` se 
 
 ## Cierre diario de ventas
 
-En `/admin/cierres`, el personal puede consultar la fecha de Madrid, sus ventas, cobros, pendientes y pedidos cancelados. El selector permite elegir **Cobrado en caja**, **Entregado** o **Entregado y listo para recoger**. La vista previa no modifica la ficha; **Usar siempre este criterio** lo guarda para los próximos cierres y requiere administración.
+En `/admin/cierres`, el personal puede consultar la fecha de Madrid, sus ventas, cobros, pendientes y pedidos cancelados. El interruptor **Contar también los pedidos listos sin recoger** cambia la vista previa; **Usar siempre este criterio** lo guarda para los próximos cierres y requiere administración.
 
-Administración puede guardar una fotografía inmutable del resumen y del criterio empleado. Con el criterio de cobro, las cuentas abiertas y los entregados sin cobrar avisan y bloquean el cierre de hoy, salvo que se confirme **forzar**. Cambiar la configuración, cobrar después o recibir nuevos pedidos no recalcula un cierre guardado ni bloquea la recepción. El desglose es excluyente: cobrados, entregados sin cobrar, listos, en curso y cancelados cubren todos los pedidos del día.
+Administración puede guardar una fotografía inmutable del resumen y del criterio empleado. Los cierres de hoy bloquean si quedan pedidos nuevos o preparando; los listos también bloquean cuando no se incluyen, y dejan de bloquear cuando sí se incluyen. Las cuentas abiertas siguen requiriendo confirmación. Cambiar la configuración, cobrar después o recibir nuevos pedidos no recalcula un cierre guardado ni bloquea la recepción. El desglose siempre muestra entregados, listos sin recoger, en curso y cancelados sin contar ningún pedido dos veces.
 
-La migración `010_criterio_cobro_cierres.sql` convierte la clave antigua y deja `cierre_criterio = "cobrados"` cuando no existe. El CSV y el informe impreso incluyen el criterio real, el reparto por método y lo pendiente de cobro. n8n puede consultar y guardar cierres con su clave existente; los reintentos devuelven el mismo cierre. Detalles en [despliegue](server/DESPLIEGUE.md#cierre-diario-y-criterio-de-venta).
+La migración `011_criterio_venta_cierres.sql` añade `negocio.datos.cierre_incluye_listos` con valor `false` si no existe y normaliza cierres anteriores. La previsualización acepta `?incluye_listos=true|false`; el CSV y el informe impreso incluyen el criterio real. n8n puede consultar y guardar cierres con ese criterio; los reintentos devuelven el mismo cierre. Detalles en [despliegue](server/DESPLIEGUE.md#cierre-diario-y-criterio-de-venta).
 
 `npm --prefix server test` incluye los casos de ambos criterios, sus desgloses, permisos, fechas de Madrid, guardados concurrentes e históricos inmutables. Usa una base dedicada en `DATABASE_URL_TEST`; sin ella, las suites se omiten.
 

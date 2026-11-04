@@ -48,27 +48,27 @@ Usa **una base PostgreSQL dedicada a pruebas**, nunca producción. La suite crea
 
 ## Cierre diario y criterio de venta
 
-Las migraciones `008_cierres_diarios.sql` y `010_criterio_cobro_cierres.sql` crean `cierres_diarios` y convierten la configuración antigua a `negocio.datos.cierre_criterio = "cobrados"`. Los valores posibles son `cobrados`, `entregados` y `entregados_y_listos`. El criterio predeterminado cuenta los pedidos cobrados en caja; los cierres guardados conservan siempre el criterio aplicado.
+Las migraciones `008_cierres_diarios.sql`, `010_criterio_cobro_cierres.sql` y `011_criterio_venta_cierres.sql` crean y actualizan `cierres_diarios`. La ficha usa `negocio.datos.cierre_incluye_listos` (`false` por defecto): solo se cuentan pedidos `entregado`, o también `listo` cuando está activado. Los cierres guardados conservan siempre el criterio aplicado.
 
 Los pedidos se asignan por su `fecha` de creación en **Europe/Madrid**. El resumen incluye totales, ticket medio, tipos, categorías, productos y las 24 horas del día. Los artículos conservan el nombre y precio de la línea original; las categorías se consultan en la carta al calcular. Todos los desgloses de una consulta usan la misma fotografía de los datos. Siempre se muestran entregados, listos sin recoger, en curso y cancelados; ventas y en curso nunca se solapan.
 
-En **Cierre diario**, el selector cambia solo la vista previa. Administración puede pulsar **Usar siempre este criterio** y recibe «Guardado: los próximos cierres usarán este criterio». El informe también muestra el cobro por método, entregados sin cobrar, cuentas abiertas y cuentas anuladas.
+En **Cierre diario**, el interruptor cambia solo la vista previa mediante `?incluye_listos=true|false`. Administración puede pulsar **Usar siempre este criterio** y recibe «Guardado: los próximos cierres usarán este criterio». El informe también muestra el criterio aplicado, entregados, listos sin recoger, cobro por método, cuentas abiertas y cuentas anuladas.
 
 | Ruta | Permiso | Comportamiento |
 |---|---|---|
 | `GET /admin/cierres/:fecha` | Personal autenticado | Cierre guardado o vista previa según la ficha |
-| `GET /admin/cierres/:fecha?criterio=entregados` | Personal autenticado | Vista previa alternativa; no cambia la ficha |
+| `GET /admin/cierres/:fecha?incluye_listos=true` | Personal autenticado | Vista previa alternativa; no cambia la ficha |
 | `GET /admin/cierres/:fecha/csv` | Personal autenticado | CSV UTF-8 con criterio, métodos de pago y pendientes |
-| `PATCH /admin/negocio/cierre` | Solo administración | Cuerpo `{ "cierre_criterio": "cobrados" }`; cambia únicamente esa clave |
+| `PATCH /admin/negocio/cierre` | Solo administración | Cuerpo `{ "cierre_incluye_listos": true }`; cambia únicamente esa clave |
 | `POST /admin/cierres` | Solo administración | Cuerpo `{ "fecha": "AAAA-MM-DD", "forzar": false }`; guarda con el criterio actual |
 | `GET /n8n/cierres/:fecha` | `X-Api-Key` existente | El mismo informe y la misma previsualización |
 | `POST /n8n/cierres` | `X-Api-Key` existente | Cuerpo `{ "fecha": "AAAA-MM-DD", "forzar": false }`; mismo guardado que administración |
 
-El informe devuelve `resumen.criterio = { valor, descripcion }`, `cobro`, `pendiente_cobro`, `anuladas`, los desgloses excluyentes, `guardado`, `cerrado_at`, `cerrado_por`, `origen`, `criterio_configurado` y `hoy`. El criterio del resumen es el que realmente se aplicó; `criterio_configurado` puede ser distinto en una vista previa o en un cierre antiguo. El cuerpo del guardado no admite un criterio alternativo. Un `PUT /admin/negocio` de un cliente antiguo que omita el nuevo campo conserva la elección existente.
+El informe devuelve `resumen.criterio = { incluye_listos, descripcion }`, `cobro`, `pendiente_cobro`, `anuladas`, el desglose de entregados y listos sin recoger, `guardado`, `cerrado_at`, `cerrado_por`, `origen`, `criterio_configurado` y `hoy`. El criterio del resumen es el que realmente se aplicó; `criterio_configurado` puede ser distinto en una vista previa o en un cierre antiguo. El cuerpo del guardado no admite un criterio alternativo. Un `PUT /admin/negocio` que omita el nuevo campo conserva la elección existente.
 
 Los cierres guardados **no se recalculan**: consultar con otro criterio, cambiar la ficha o reintentar un POST conserva el resumen original. El primer guardado devuelve `201`; los reintentos, `200`. Se conserva quién lo guardó o si procedió de n8n. CSV e impresión muestran también el criterio guardado. No se puede guardar una fecha futura.
 
-Al cerrar **hoy**, el criterio de cobro bloquea si quedan cuentas abiertas o entregados sin cobrar, además de pedidos pendientes; la administración puede confirmar `forzar: true`. Los otros criterios bloquean los nuevos, preparando y listos que no sean ventas. El cierre no modifica pedidos ni pagos y no impide recibir pedidos posteriores.
+Al cerrar **hoy**, se bloquea si quedan pedidos nuevos o preparando; los pedidos listos solo bloquean cuando no forman parte de las ventas. Las cuentas abiertas también requieren confirmación; administración puede confirmar `forzar: true`. El cierre no modifica pedidos ni pagos y no impide recibir pedidos posteriores.
 
 ### Automatizar con n8n
 

@@ -7,8 +7,6 @@ export interface GrupoCierre extends CifrasCierre {
 	nombre: string;
 }
 
-export type CriterioCierre = "cobrados" | "entregados" | "entregados_y_listos";
-
 export interface DesgloseCierre extends CifrasCierre {
 	pedidos: number;
 }
@@ -16,7 +14,7 @@ export interface DesgloseCierre extends CifrasCierre {
 export interface ResumenCierre {
 	fecha: string;
 	zona_horaria: string;
-	criterio: { valor: CriterioCierre; descripcion: string };
+	criterio: { incluye_listos: boolean; descripcion: string };
 	totales: CifrasCierre & { ticket_medio: number };
 	cobro: {
 		total_cobrado: number;
@@ -28,6 +26,7 @@ export interface ResumenCierre {
 	};
 	anuladas: { cuentas: number; importe: number; detalle: { id: string; mesa_numero: number; importe: number; motivo: string | null }[] };
 	cobrados: CifrasCierre;
+	entregados: CifrasCierre;
 	entregados_sin_cobrar: CifrasCierre;
 	listos_sin_recoger: CifrasCierre;
 	cancelados: CifrasCierre;
@@ -44,6 +43,6 @@ export interface InformeCierre {
 	cerrado_at: string | null;
 	cerrado_por: string | null;
 	origen: "personal" | "n8n" | null;
-	criterio_configurado: CriterioCierre;
+	criterio_configurado: boolean;
 	hoy: string;
 }

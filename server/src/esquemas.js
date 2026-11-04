@@ -78,19 +78,17 @@ export const esquemaInicioStreamMesa = z.object({
 export const esquemaFechaCierre = z.iso.date({ error: "Indica una fecha válida con formato AAAA-MM-DD" })
 	.refine((fecha) => !fecha.startsWith("0000-"), "El año de la fecha debe ser mayor que cero");
 export const esquemaConsultaCierre = z.strictObject({
-	criterio: z.enum(["cobrados", "entregados", "entregados_y_listos"], {
-		error: "criterio debe ser cobrados, entregados o entregados_y_listos",
-	}).optional(),
-}, { error: "La consulta solo admite criterio=cobrados, entregados o entregados_y_listos" });
+	incluye_listos: z.enum(["true", "false"], {
+		error: "incluye_listos debe ser true o false",
+	}).transform((valor) => valor === "true").optional(),
+}, { error: "La consulta solo admite incluye_listos=true o false" });
 export const esquemaGuardarCierre = z.strictObject({
 	fecha: esquemaFechaCierre,
 	forzar: z.boolean({ error: "forzar debe ser verdadero o falso" }).default(false),
 }, { error: "Indica la fecha y, opcionalmente, forzar" });
 export const esquemaConfiguracionCierre = z.strictObject({
-	cierre_criterio: z.enum(["cobrados", "entregados", "entregados_y_listos"], {
-		error: "Elige un criterio de cierre válido",
-	}),
-}, { error: "Indica únicamente cierre_criterio" });
+	cierre_incluye_listos: z.boolean({ error: "cierre_incluye_listos debe ser verdadero o falso" }),
+}, { error: "Indica únicamente cierre_incluye_listos" });
 
 export const esquemaLogin = z.object({
 	email: z.email().transform((e) => e.toLowerCase()),
@@ -136,9 +134,7 @@ export const esquemaNegocio = z.object({
 	nif: z.string().trim().min(1).max(30).nullable().optional(),
 	email_contacto: z.email().max(254).nullable().optional(),
 	conservacion_meses: z.number().int().min(1).max(60).nullable().optional(),
-	cierre_criterio: z.enum(["cobrados", "entregados", "entregados_y_listos"], {
-		error: "El criterio de cierre no es válido",
-	}).default("cobrados"),
+	cierre_incluye_listos: z.boolean().default(false),
 	lema: z.string().trim().max(80).default(""),
 	descripcion: z.string().trim().max(600).default(""),
 	direccion: z.string().trim().max(150),

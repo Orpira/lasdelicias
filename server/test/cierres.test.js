@@ -8,7 +8,7 @@ import jwt from "@fastify/jwt";
 
 const urlPruebas = process.env.DATABASE_URL_TEST;
 
-describe("Cierre diario con criterio de cobro", {
+describe("Cierre diario con criterio de venta", {
 	skip: !urlPruebas && "Define DATABASE_URL_TEST con una base PostgreSQL dedicada a pruebas",
 }, () => {
 	let base, pool, app, cierres, administrador, productos, esquema, numero = 0;
@@ -59,7 +59,7 @@ describe("Cierre diario con criterio de cobro", {
 
 	beforeEach(async () => {
 		await pool.query("TRUNCATE cierres_diarios, pedidos, cuentas CASCADE");
-		await pool.query("UPDATE negocio SET datos = (datos - 'cierre_incluye_listos') || '{\"cierre_criterio\":\"cobrados\"}'::jsonb WHERE id = 1");
+		await pool.query("UPDATE negocio SET datos = datos || '{\"cierre_incluye_listos\":false}'::jsonb WHERE id = 1");
 		numero = 0;
 	});
 
@@ -80,12 +80,11 @@ describe("Cierre diario con criterio de cobro", {
 		return nuevo;
 	}
 
-	it("migra el valor antiguo y usa cobrados por defecto", async () => {
+	it("usa solo entregados por defecto", async () => {
 		const negocio = (await pool.query("SELECT datos FROM negocio WHERE id = 1")).rows[0].datos;
-		assert.equal(negocio.cierre_criterio, "cobrados");
-		assert.equal(Object.hasOwn(negocio, "cierre_incluye_listos"), false);
-		assert.equal(cierres.filtroVenta("cobrados", "p"), "p.pagado_at IS NOT NULL AND p.estado <> 'cancelado'");
-		assert.equal((await cierres.consultarCierre(fecha)).criterio_configurado, "cobrados");
+		assert.equal(negocio.cierre_incluye_listos, false);
+		assert.deepEqual(cierres.estadosQueCuentan(false), ["entregado"]);
+		assert.equal((await cierres.consultarCierre(fecha)).criterio_configurado, false);
 	});
 
 	it("separa los grupos y aplica el criterio a todos los desgloses", async () => {
@@ -94,20 +93,16 @@ describe("Cierre diario con criterio de cobro", {
 		await pedido("listo");
 		await pedido("nuevo");
 		await pedido("cancelado");
-		const cobrados = (await cierres.consultarCierre(fecha, { criterio: "cobrados" })).resumen;
-		assert.equal(cobrados.totales.pedidos, 1);
-		assert.deepEqual(cobrados.cobrados, { pedidos: 1, importe: 3.25 });
-		assert.equal(cobrados.entregados_sin_cobrar.pedidos, 1);
-		assert.equal(cobrados.listos_sin_recoger.pedidos, 1);
-		assert.equal(cobrados.en_curso.pedidos, 1);
-		assert.equal(cobrados.cancelados.pedidos, 1);
-		const totalPedidos = cobrados.cobrados.pedidos + cobrados.entregados_sin_cobrar.pedidos
-			+ cobrados.listos_sin_recoger.pedidos + cobrados.en_curso.pedidos + cobrados.cancelados.pedidos;
-		assert.equal(totalPedidos, 5);
-		const entregados = (await cierres.consultarCierre(fecha, { criterio: "entregados" })).resumen;
-		assert.equal(eurosCentimos(entregados.totales.importe), 645);
-		const listos = (await cierres.consultarCierre(fecha, { criterio: "entregados_y_listos" })).resumen;
-		assert.equal(eurosCentimos(listos.totales.importe), 855);
+		const entregados = (await cierres.consultarCierre(fecha, { incluye_listos: "false" })).resumen;
+		assert.equal(entregados.totales.pedidos, 2);
+		assert.equal(eurosCentimos(entregados.totales.importe), 650);
+		assert.deepEqual(entregados.entregados, { pedidos: 2, importe: 6.5 });
+		assert.deepEqual(entregados.listos_sin_recoger, { pedidos: 1, importe: 3.25 });
+		assert.equal(entregados.en_curso.pedidos, 2);
+		assert.equal(entregados.cancelados.pedidos, 1);
+		const listos = (await cierres.consultarCierre(fecha, { incluye_listos: "true" })).resumen;
+		assert.equal(eurosCentimos(listos.totales.importe), eurosCentimos(entregados.totales.importe + entregados.listos_sin_recoger.importe));
+		assert.equal(listos.en_curso.pedidos, 1);
 	});
 
 	it("calcula el cobro por método y la pendiente de cobro", async () => {
@@ -121,13 +116,22 @@ describe("Cierre diario con criterio de cobro", {
 	});
 
 	it("persiste la configuración y conserva el criterio de un cierre", async () => {
-		const respuesta = await app.inject({ method: "PATCH", url: "/admin/negocio/cierre", headers: sesion(), payload: { cierre_criterio: "entregados" } });
+		const respuesta = await app.inject({ method: "PATCH", url: "/admin/negocio/cierre", headers: sesion(), payload: { cierre_incluye_listos: true } });
 		assert.equal(respuesta.statusCode, 200);
 		const cierre = await app.inject({ method: "POST", url: "/admin/cierres", headers: sesion(), payload: { fecha } });
 		assert.equal(cierre.statusCode, 201);
-		await app.inject({ method: "PATCH", url: "/admin/negocio/cierre", headers: sesion(), payload: { cierre_criterio: "cobrados" } });
+		await app.inject({ method: "PATCH", url: "/admin/negocio/cierre", headers: sesion(), payload: { cierre_incluye_listos: false } });
 		const historico = await app.inject({ url: `/admin/cierres/${fecha}`, headers: sesion() });
-		assert.equal(historico.json().resumen.criterio.valor, "entregados");
+		assert.equal(historico.json().resumen.criterio.incluye_listos, true);
+		assert.equal((await cierres.consultarCierre(fecha)).criterio_configurado, false);
+	});
+
+	it("no bloquea el cierre de hoy por pedidos listos si se incluyen", async () => {
+		await pedido("listo");
+		await pool.query("UPDATE negocio SET datos = datos || '{\"cierre_incluye_listos\":true}'::jsonb WHERE id = 1");
+		const hoy = (await pool.query("SELECT (now() AT TIME ZONE 'Europe/Madrid')::date::text AS fecha")).rows[0].fecha;
+		const cierre = await app.inject({ method: "POST", url: "/admin/cierres", headers: sesion(), payload: { fecha: hoy } });
+		assert.equal(cierre.statusCode, 201);
 	});
 
 	it("permite forzar un cierre con cuenta abierta", async () => {
