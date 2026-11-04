@@ -82,6 +82,34 @@ La expresión del ejemplo cierra **ayer** y es adecuada para ejecutarlo después
 
 Las pruebas de `test/cierres.test.js` se ejecutan junto a las de cuentas con `DATABASE_URL_TEST` y comprueban que sumar listos añade exactamente su importe, sin solapar ventas y en curso, además de todas las rutas, roles, CSV e históricos.
 
+## Pedidos fuera de horario
+
+La migración automática `009_fuera_de_horario.sql` añade `pedidos.fuera_horario`, `pedidos.atender_desde` y `negocio.datos.dias_cerrado`, sin sobrescribir los festivos existentes. Se usa `009` porque `008` está ocupado por el cierre diario. No hay que modificar ningún archivo de entorno.
+
+`src/horario.js` es la única fuente de cálculo: **Europe/Madrid**, apertura incluida y cierre excluido, un tramo diario sin cruzar medianoche y búsqueda de apertura durante los próximos 14 días, incluido hoy. Un valor `null` cierra ese día. Se admiten guion normal y largo; `24:00` solo puede ser la hora final. En el salto de marzo se usa el primer minuto real del tramo; en octubre se distinguen los dos instantes de una hora repetida.
+
+Configura `horario` y `dias_cerrado` mediante `PUT /admin/negocio`, con sesión de administración y el resto de la ficha. Por ejemplo, `dias_cerrado: ["2026-12-25", "2027-01-01"]` cierra esas fechas aunque el horario semanal diga que abre. Un cliente antiguo que omita la lista no la borra. Las fechas y los tramos se validan; los errores del horario almacenado se notifican, no se interpreta una configuración inválida como abierto.
+
+### Contrato y funcionamiento
+
+- `GET /horario/estado`, público y sin caché: `{ abierto, siguiente_apertura, texto }`. Mientras está abierto, `siguiente_apertura` es `null`. Home y carta refrescan el mismo texto cada 30 segundos.
+- `GET /horario/estado?recogida=true` añade `recogida: { fecha, opciones: [{ hora, instante }] }` o `null`. Solo el formulario pide esta lista de minutos válidos; `instante` es ISO y la etiqueta está en Madrid. En octubre las horas repetidas incluyen su zona.
+- Con el local cerrado, para llevar y WhatsApp se aceptan con `fuera_horario: true`, `atender_desde` y **fecha/correlativo del día de apertura**. Se mantiene la fecha real de recepción en `created_at`; así el cierre del día de preparación no pierde estos pedidos.
+- La hora de recogida debe estar dentro de un tramo abierto, fuera de festivos y no ser anterior a `atender_desde`. No se aplica el límite antiguo de 48 horas, que impediría recoger tras vacaciones o fines de semana largos.
+- Un pedido de mesa cerrado devuelve `409` con la alternativa para recoger. Si no se encuentra ninguna apertura, ambos canales devuelven `409` e indican que hay que llamar. No se guarda un pedido, abre una cuenta ni descuenta stock en esos rechazos.
+- Los pedidos aceptados reservan stock al crearse, como los inmediatos. Se pueden cancelar desde la sección de programados y se devuelve ese stock; no se pueden poner a preparar antes de su apertura.
+- Barra muestra **Programados para la apertura**, plegado inicialmente. Al llegar `atender_desde`, el reloj los mueve a **Nuevos** y avisa una sola vez; ni la recepción anticipada ni las reconexiones duplican el aviso. Cocina no los incluye hasta entonces y la espera empieza en la apertura, no la noche anterior.
+- Cambiar después la ficha no reprograma los pedidos ya confirmados: conservan la hora comunicada al cliente.
+
+### Prueba manual en una base de pruebas
+
+1. Guarda una ficha con horario de prueba `07:00–19:00` todos los días y añade la fecha actual de Madrid a `dias_cerrado`. Consulta `/horario/estado?recogida=true`: debe indicar cerrado y devolver la apertura de mañana.
+2. Desde la carta, añade un producto y envía un pedido **para recoger**. El aviso y la opción «En cuanto abramos» muestran la apertura; las horas seleccionables pertenecen solo a ese día y al tramo permitido.
+3. Comprueba en la respuesta y en `/pedidos/:codigo` que `fuera_horario` es `true`, `atender_desde` coincide con la apertura y `fecha`/`numero_dia` son del día de preparación. El seguimiento confirma día y hora, con **Recibido** marcado y el resto en espera.
+4. Abre Barra: está en **Programados para la apertura**, no en Nuevos y no suena al recibirlo. Cocina no lo muestra. En la base de pruebas, adelanta únicamente su `atender_desde` a un instante pasado; tras el refresco del reloj pasa a Nuevos y avisa una vez. No hagas esta manipulación en producción.
+5. Intenta crear un pedido de mesa con un QR válido: debe responder `409` «El local está cerrado ahora mismo…», sin crear cuenta ni consumir stock.
+6. Restaura la ficha de prueba o elimina el entorno aislado. Las pruebas automatizadas crean su propio esquema con `DATABASE_URL_TEST` y no alteran producción.
+
 ## Instalación rápida (un comando)
 
 Con el DNS del paso 1 ya creado, en el servidor (con tu usuario; las variables van **después** de `sudo`):
@@ -89,7 +117,7 @@ Con el DNS del paso 1 ya creado, en el servidor (con tu usuario; las variables v
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Orpira/lasdelicias/main/server/deploy/instalar.sh \
   | sudo ADMIN_EMAIL=tu@email.es ADMIN_NOMBRE="Tu nombre" \
-         FRONT_ORIGENES="https://lasdelicias.vercel.app" bash
+         FRONT_ORIGENES="https://lasdelicias.orpira.es" bash
 ```
 
 El script:
@@ -148,7 +176,7 @@ nano .env
 Rellena (genera cada secreto con `openssl rand -base64 32`):
 
 - `POSTGRES_PASSWORD`, `JWT_SECRET`, `N8N_WEBHOOK_SECRET`, `N8N_API_KEY`
-- `CORS_ORIGINS`: los dominios del frontend, separados por comas. Admite `*` para las URLs que Vercel genera en cada despliegue: `https://lasdelicias.vercel.app,https://lasdelicias-orpira-7163s-projects.vercel.app,https://lasdelicias-*-orpira-7163s-projects.vercel.app`
+- `CORS_ORIGINS`: los dominios del frontend, separados por comas. Admite `*` para las URLs que Vercel genera en cada despliegue: `https://lasdelicias.orpira.es,https://lasdelicias-orpira-7163s-projects.vercel.app,https://lasdelicias-*-orpira-7163s-projects.vercel.app`
 - `PUBLIC_URL=https://api-delicias.orpira.es`
 - `N8N_WEBHOOK_URL`: la URL del webhook que crearás en n8n (paso 5). Si n8n está en Docker en este servidor, puedes usar la red interna (ver comentario en `docker-compose.yml`).
 
@@ -190,7 +218,7 @@ La API envía un POST JSON a `http://n8n:5678/webhook/las-delicias` con la cabec
 
 | `tipo` | Cuándo | Contenido |
 |---|---|---|
-| `pedido.creado` | Entra un pedido (web, mesa o WhatsApp) | `pedido` completo con líneas, teléfono, tipo y `mesa_nombre` |
+| `pedido.creado` | Entra un pedido (web, mesa o WhatsApp) | `pedido` completo con líneas, teléfono, tipo, `mesa_nombre`, `fuera_horario` y `atender_desde` |
 | `pedido.estado` | El personal lo mueve de columna | `pedido` + `estado_anterior` |
 | `pedido.mesa` | Un pedido cambia de mesa | `pedido` + `estado_anterior` |
 | `mesa.llamada` | Una mesa llama al personal o pide la cuenta | `llamada` con `mesa_numero`, `mesa_nombre`, `motivo` y `created_at` |
@@ -200,11 +228,14 @@ La API envía un POST JSON a `http://n8n:5678/webhook/las-delicias` con la cabec
 El Switch lee **`body.tipo`**, porque n8n coloca el JSON recibido dentro de `body`. Incluye estas acciones:
 
 - **Pedido listo**: WhatsApp por Evolution únicamente para `pedido.estado`, estado `listo`, tipo distinto de `mesa` y teléfono no vacío. El mensaje usa el nombre del cliente y `numero_dia`, no el identificador interno.
+- **Recibido fuera de horario**: para `pedido.creado`, `pedido.fuera_horario === true` y teléfono no vacío. Confirma al instante el número de la apertura y cuándo se preparará, con fecha española y hora de Madrid. Comparte **Normalizar teléfono** y **Avisar por WhatsApp**, sin duplicar credenciales ni enviar también el aviso de listo.
 - **Llamada de mesa**: Telegram al grupo del personal, distinguiendo atención y cuenta. Muestra `mesa_nombre` o, si está vacío, `Mesa N`.
 - **Stock**: Telegram al dueño para mínimos y agotados.
 - **Opinión nueva**: Telegram al dueño, indicando si procede de un pedido verificado.
 
-Las salidas **Pedido creado**, **Cambio de mesa** y **Otros eventos** quedan sin conectar, preparadas para ampliaciones. Los textos dinámicos de Telegram se escapan para que nombres y comentarios con `<`, `>` o `&` no se interpreten como HTML.
+Las salidas **Pedido creado · reservado** (el resto de pedidos creados), **Cambio de mesa** y **Otros eventos** quedan sin conectar, preparadas para ampliaciones. Los textos dinámicos de Telegram se escapan para que nombres y comentarios con `<`, `>` o `&` no se interpreten como HTML.
+
+La confirmación de apertura dice «¡Hola {nombre}! Hemos recibido tu pedido #{numero_dia} en Las Delicias. Ahora estamos cerrados: lo prepararemos {día} a partir de las {hora} y te avisaremos cuando esté listo. ¡Gracias!». Una fecha de apertura inválida detiene la ejecución; no se sustituye por otra inventada. Importa de nuevo el JSON o añade la rama al flujo ya configurado sin perder sus credenciales. Para WhatsApp, el agente debe usar la respuesta de creación y esta confirmación, sin prometer que se está preparando mientras el local siga cerrado.
 
 ### Preparar Telegram
 
@@ -277,6 +308,7 @@ Cabecera `X-Api-Key: <N8N_API_KEY>`:
 |---|---|---|
 | GET | `/productos` | Carta con disponibilidad (pública) |
 | GET | `/negocio` | Dirección, horario, teléfono, Instagram, servicios (pública) |
+| GET | `/horario/estado` | Apertura actual y siguiente, con el mismo cálculo que al crear pedidos (pública) |
 | POST | `/n8n/pedidos` | Crear pedido de WhatsApp: `{ items:[{producto_id,cantidad}], nombre, telefono, hora_recogida?, notas? }` — el precio lo calcula la API |
 | GET | `/n8n/pedidos/:codigo` | Consultar un pedido |
 | PATCH | `/n8n/pedidos/:id` | Cambiar estado: `{ "estado": "listo" }` |

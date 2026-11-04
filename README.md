@@ -7,6 +7,7 @@ App de pedidos y atención en el local para Las Delicias (Calle Ayala, 28 · Má
 - **Barra**: pedidos en tiempo real (nuevos → preparando → listos), avisos sonoros, llamadas de mesa, avisos de stock bajo.
 - **Cuentas y cobro**: una cuenta por visita de mesa, total en directo, métodos registrados por el personal y avisos de pendientes. La app no procesa pagos; el dinero se recibe en caja. Para llevar o WhatsApp se entregan y cobran con un toque.
 - **Cierre diario**: ventas por tipo, categoría, producto y hora, con criterio configurable entre pedidos entregados o entregados y listos para recoger. Incluye métodos de pago, pendientes, cuentas anuladas, CSV e impresión.
+- **Pedidos fuera de horario**: para llevar y WhatsApp se aceptan estando cerrado, con confirmación inmediata y fecha y número del día de apertura. Barra los separa en programados; cocina y el pitido esperan a que puedan prepararse.
 - **Cocina (tablet)**: comandas por orden de llegada, filtradas por puesto (cocina, barra, pastelería), platos que se tachan al tocarlos, tiempos en colores, resumen de producción y pantalla siempre encendida.
 - **Carta**: agotados con un toque, productos y fotos, stock de envasados, enlace con la caja (TPV), hoja de QR imprimible.
 - **Ecosistema**: los eventos (pedido creado, cambio de estado o de mesa, llamada de mesa, stock bajo) salen hacia **n8n**, que puede avisar por WhatsApp/Telegram, publicar en Instagram, atender pedidos por WhatsApp con IA o sincronizar el stock con la caja, usando la misma API.
@@ -73,6 +74,16 @@ Administración puede guardar una fotografía inmutable del resumen y del criter
 La migración `011_criterio_venta_cierres.sql` añade `negocio.datos.cierre_incluye_listos` con valor `false` si no existe y normaliza cierres anteriores. La previsualización acepta `?incluye_listos=true|false`; el CSV y el informe impreso incluyen el criterio real. n8n puede consultar y guardar cierres con ese criterio; los reintentos devuelven el mismo cierre. Detalles en [despliegue](server/DESPLIEGUE.md#cierre-diario-y-criterio-de-venta).
 
 `npm --prefix server test` incluye los casos de ambos criterios, sus desgloses, permisos, fechas de Madrid, guardados concurrentes e históricos inmutables. Usa una base dedicada en `DATABASE_URL_TEST`; sin ella, las suites se omiten.
+
+## Pedidos fuera de horario
+
+El horario se calcula exclusivamente en el servidor, en `Europe/Madrid`, incluidos los cambios de hora. Home, carta y pedido consultan `GET /horario/estado`; la ficha admite `dias_cerrado`, una lista de fechas de festivos y vacaciones. Cada día tiene un tramo `HH:MM–HH:MM` o `null`; no se admiten cruces de medianoche y `24:00` solo es válido como cierre.
+
+Con el local cerrado, los pedidos para llevar y WhatsApp se reservan para la siguiente apertura de los próximos 14 días. Guardan `fuera_horario` y `atender_desde`, con el correlativo de ese día de preparación, no del momento de envío. Los pedidos de mesa se rechazan; si no hay apertura prevista, se pide llamar al negocio. Las horas elegidas se validan también en servidor y el selector usa los minutos disponibles que este devuelve, sin depender de la zona del móvil.
+
+El seguimiento confirma cuándo se preparará el pedido. En Barra aparecen en **Programados para la apertura** y pasan solos a **Nuevos**, con un único aviso sonoro, al llegar la hora. Cocina no los muestra antes. Se pueden cancelar antes de abrir, pero no empezar a preparar. El workflow de n8n confirma por WhatsApp los pedidos fuera de horario con teléfono.
+
+La migración `009_fuera_de_horario.sql` usa el siguiente número libre, porque `008` ya está reservado al cierre diario. `npm --prefix server test` ejecuta las pruebas de calendario y del workflow; con `DATABASE_URL_TEST` comprueba también creación, correlativos, permisos y programación en PostgreSQL. El reloj y los avisos se prueban con `node --experimental-strip-types --test src/lib/programados.test.js`. Consulta [configuración y prueba manual](server/DESPLIEGUE.md#pedidos-fuera-de-horario).
 
 ## Privacidad y almacenamiento
 

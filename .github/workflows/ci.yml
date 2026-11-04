@@ -1,0 +1,57 @@
+# Comprobaciones automáticas en cada pull request y en main:
+# build, lint y tests del frontend; tests del servidor contra un PostgreSQL de pruebas.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+
+  servidor:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: pruebas
+          POSTGRES_DB: delicias_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: server
+    env:
+      DATABASE_URL_TEST: postgres://postgres:pruebas@localhost:5432/delicias_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - name: Sintaxis
+        run: for f in $(find src scripts -name "*.js"); do node --check "$f"; done
+      - name: Arranque de módulos (detecta importaciones rotas)
+        run: node --input-type=module -e "await import('./src/rutas/publicas.js'); await import('./src/rutas/staff.js'); await import('./src/rutas/n8n.js'); console.log('ok')"
+        env:
+          DATABASE_URL: postgres://postgres:pruebas@localhost:5432/delicias_test
+          JWT_SECRET: solo-para-ci-xxxxxxxxxxxxxxxxxxxxxxxx
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
