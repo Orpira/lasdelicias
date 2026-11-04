@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { esTramoHorarioValido } from "./horario.js";
 
 const telefono = z
 	.string()
@@ -8,6 +7,8 @@ const telefono = z
 
 export const CATEGORIAS = ["Desayunos", "Almuerzos", "Comida casera", "Pastelería", "Bebidas"];
 export const ESTADOS = ["nuevo", "preparando", "listo", "entregado", "cancelado"];
+
+const ahora = () => Date.now();
 
 export const esquemaNuevoPedido = z
 	.object({
@@ -30,6 +31,12 @@ export const esquemaNuevoPedido = z
 		if (p.tipo === "recoger") {
 			if (!p.telefono) {
 				ctx.addIssue({ code: "custom", path: ["telefono"], message: "Necesitamos tu teléfono para avisarte" });
+			}
+			if (p.hora_recogida) {
+				const t = Date.parse(p.hora_recogida);
+				if (t < ahora() - 5 * 60_000 || t > ahora() + 48 * 3_600_000) {
+					ctx.addIssue({ code: "custom", path: ["hora_recogida"], message: "La hora de recogida debe ser en las próximas 48 h" });
+				}
 			}
 		}
 	});
@@ -68,6 +75,23 @@ export const esquemaInicioStreamMesa = z.object({
 	cuenta: esquemaIdCuenta.optional(),
 });
 
+export const esquemaFechaCierre = z.iso.date({ error: "Indica una fecha válida con formato AAAA-MM-DD" })
+	.refine((fecha) => !fecha.startsWith("0000-"), "El año de la fecha debe ser mayor que cero");
+export const esquemaConsultaCierre = z.strictObject({
+	criterio: z.enum(["cobrados", "entregados", "entregados_y_listos"], {
+		error: "criterio debe ser cobrados, entregados o entregados_y_listos",
+	}).optional(),
+}, { error: "La consulta solo admite criterio=cobrados, entregados o entregados_y_listos" });
+export const esquemaGuardarCierre = z.strictObject({
+	fecha: esquemaFechaCierre,
+	forzar: z.boolean({ error: "forzar debe ser verdadero o falso" }).default(false),
+}, { error: "Indica la fecha y, opcionalmente, forzar" });
+export const esquemaConfiguracionCierre = z.strictObject({
+	cierre_criterio: z.enum(["cobrados", "entregados", "entregados_y_listos"], {
+		error: "Elige un criterio de cierre válido",
+	}),
+}, { error: "Indica únicamente cierre_criterio" });
+
 export const esquemaLogin = z.object({
 	email: z.email().transform((e) => e.toLowerCase()),
 	password: z.string().min(1).max(200),
@@ -105,21 +129,16 @@ export const esquemaStockExterno = z.object({
 		.max(5000),
 });
 
-export const esquemaConsultaHorario = z.strictObject({
-	recogida: z.literal("true", { error: "recogida solo admite true" }).optional(),
-}, { error: "La consulta de horario solo admite recogida=true" });
-
-const dia = z.string().trim().max(40)
-	.refine(esTramoHorarioValido, "Usa un tramo HH:MM–HH:MM sin cruzar medianoche; null significa cerrado")
-	.nullable();
+const dia = z.string().trim().max(40).nullable();
 export const esquemaNegocio = z.object({
 	nombre: z.string().trim().min(1).max(80),
 	titular: z.string().trim().min(1).max(160).nullable().optional(),
 	nif: z.string().trim().min(1).max(30).nullable().optional(),
 	email_contacto: z.email().max(254).nullable().optional(),
 	conservacion_meses: z.number().int().min(1).max(60).nullable().optional(),
-	dias_cerrado: z.array(z.iso.date({ error: "Los días de cierre deben tener formato AAAA-MM-DD" })
-		.refine((fecha) => !fecha.startsWith("0000-"), "El año del día de cierre debe ser mayor que cero")).max(366).optional(),
+	cierre_criterio: z.enum(["cobrados", "entregados", "entregados_y_listos"], {
+		error: "El criterio de cierre no es válido",
+	}).default("cobrados"),
 	lema: z.string().trim().max(80).default(""),
 	descripcion: z.string().trim().max(600).default(""),
 	direccion: z.string().trim().max(150),

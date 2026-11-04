@@ -10,6 +10,7 @@ import { config } from "../config.js";
 import {
 	esquemaEstado,
 	esquemaEstadoOpinion,
+	esquemaGuardarCierre,
 	esquemaLogin,
 	esquemaMesaCambio,
 	esquemaMesaNueva,
@@ -19,6 +20,7 @@ import {
 } from "../esquemas.js";
 import { cambiarEstado, obtenerPedidoPorId, pedidosDelPanel } from "../pedidos-servicio.js";
 import { anularCuenta, cobrarCuenta, cobrarPedido, listarCuentas, obtenerCuenta, pendientesDeCobro } from "../cuentas.js";
+import { configurarCierre, consultarCierre, csvCierre, guardarCierre } from "../cierres.js";
 import { abrirSSE, suscribirPanel } from "../eventos.js";
 import { estadoTpv, sincronizarAhora } from "../tpv/index.js";
 
@@ -74,6 +76,18 @@ export default async function rutasStaff(app) {
 			return obtenerPedidoPorId(id);
 		});
 		privado.get("/admin/pendientes-cobro", async () => pendientesDeCobro());
+
+		privado.get("/admin/cierres/:fecha", async (request, reply) => {
+			reply.header("Cache-Control", "no-store");
+			return consultarCierre(request.params.fecha, request.query);
+		});
+		privado.get("/admin/cierres/:fecha/csv", async (request, reply) => {
+			const datos = await consultarCierre(request.params.fecha, request.query);
+			return reply.header("Cache-Control", "no-store")
+				.type("text/csv; charset=utf-8")
+				.header("Content-Disposition", `attachment; filename="cierre-${datos.resumen.fecha}.csv"`)
+				.send(csvCierre(datos));
+		});
 
 		privado.get("/admin/stream", async (request, reply) => {
 			const raw = abrirSSE(request, reply);
@@ -146,6 +160,13 @@ export default async function rutasStaff(app) {
 
 			admin.post("/admin/cuentas/:id/anular", async (request) =>
 				anularCuenta(request.params.id, request.body, request.user));
+
+			admin.patch("/admin/negocio/cierre", async (request) => configurarCierre(request.body, request.user));
+			admin.post("/admin/cierres", async (request, reply) => {
+				const { fecha, forzar } = validar(esquemaGuardarCierre, request.body);
+				const datos = await guardarCierre(fecha, { usuario: request.user, forzar });
+				return reply.code(datos.creado ? 201 : 200).send(datos);
+			});
 
 			// Estado de la conexión con la caja y sincronización manual
 			admin.get("/admin/tpv", async () => estadoTpv());
@@ -225,6 +246,8 @@ export default async function rutasStaff(app) {
 
 			admin.put("/admin/negocio", async (request) => {
 				const datos = validar(esquemaNegocio, request.body);
+				// Los clientes antiguos de la ficha no deben restablecer un criterio que no enviaron.
+				if (!Object.hasOwn(request.body, "cierre_criterio")) delete datos.cierre_criterio;
 				const { rows } = await query(
 					"UPDATE negocio SET datos = datos || $1::jsonb WHERE id = 1 RETURNING datos, updated_at",
 					[datos],

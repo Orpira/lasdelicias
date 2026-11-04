@@ -30,7 +30,7 @@ export class ErrorApi extends Error {
 
 type Opciones = { metodo?: string; cuerpo?: unknown; auth?: boolean; formData?: FormData };
 
-export async function api<T>(ruta: string, { metodo = "GET", cuerpo, auth = false, formData }: Opciones = {}): Promise<T> {
+async function solicitar(ruta: string, { metodo = "GET", cuerpo, auth = false, formData }: Opciones = {}): Promise<Response> {
 	const cabeceras: Record<string, string> = {};
 	if (cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
 	if (auth) {
@@ -47,13 +47,23 @@ export async function api<T>(ruta: string, { metodo = "GET", cuerpo, auth = fals
 	} catch {
 		throw new ErrorApi("No hay conexión con el servidor. Inténtalo de nuevo.", 0);
 	}
-	if (res.status === 204) return undefined as T;
-	const datos = await res.json().catch(() => ({}));
 	if (!res.ok) {
+		const datos = await res.json().catch(() => ({}));
 		if (res.status === 401 && auth) guardarToken(null);
 		throw new ErrorApi(datos.error ?? `Error ${res.status}`, res.status);
 	}
+	return res;
+}
+
+export async function api<T>(ruta: string, opciones: Opciones = {}): Promise<T> {
+	const res = await solicitar(ruta, opciones);
+	if (res.status === 204) return undefined as T;
+	const datos = await res.json().catch(() => ({}));
 	return datos as T;
+}
+
+export async function apiArchivo(ruta: string, opciones: Opciones = {}): Promise<Blob> {
+	return (await solicitar(ruta, opciones)).blob();
 }
 
 /**

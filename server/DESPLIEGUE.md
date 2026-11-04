@@ -46,33 +46,41 @@ DATABASE_URL_TEST='postgres://usuario:clave-de-pruebas@localhost:5432/delicias_p
 
 Usa **una base PostgreSQL dedicada a pruebas**, nunca producción. La suite crea un esquema aleatorio, aplica las migraciones reales, comprueba concurrencia, cobro, cambios de mesa, cancelación, permisos, privacidad y recuperación SSE, y elimina su esquema al terminar. Desactiva las salidas a n8n y TPV. No requiere modificar ningún archivo de entorno.
 
-## Pedidos fuera de horario
+## Cierre diario y criterio de venta
 
-La migración automática `009_fuera_de_horario.sql` añade `pedidos.fuera_horario`, `pedidos.atender_desde` y `negocio.datos.dias_cerrado`, sin sobrescribir los festivos existentes. Se usa `009` porque `008` está ocupado por el cierre diario. No hay que modificar ningún archivo de entorno.
+Las migraciones `008_cierres_diarios.sql` y `010_criterio_cobro_cierres.sql` crean `cierres_diarios` y convierten la configuración antigua a `negocio.datos.cierre_criterio = "cobrados"`. Los valores posibles son `cobrados`, `entregados` y `entregados_y_listos`. El criterio predeterminado cuenta los pedidos cobrados en caja; los cierres guardados conservan siempre el criterio aplicado.
 
-`src/horario.js` es la única fuente de cálculo: **Europe/Madrid**, apertura incluida y cierre excluido, un tramo diario sin cruzar medianoche y búsqueda de apertura durante los próximos 14 días, incluido hoy. Un valor `null` cierra ese día. Se admiten guion normal y largo; `24:00` solo puede ser la hora final. En el salto de marzo se usa el primer minuto real del tramo; en octubre se distinguen los dos instantes de una hora repetida.
+Los pedidos se asignan por su `fecha` de creación en **Europe/Madrid**. El resumen incluye totales, ticket medio, tipos, categorías, productos y las 24 horas del día. Los artículos conservan el nombre y precio de la línea original; las categorías se consultan en la carta al calcular. Todos los desgloses de una consulta usan la misma fotografía de los datos. Siempre se muestran entregados, listos sin recoger, en curso y cancelados; ventas y en curso nunca se solapan.
 
-Configura `horario` y `dias_cerrado` mediante `PUT /admin/negocio`, con sesión de administración y el resto de la ficha. Por ejemplo, `dias_cerrado: ["2026-12-25", "2027-01-01"]` cierra esas fechas aunque el horario semanal diga que abre. Un cliente antiguo que omita la lista no la borra. Las fechas y los tramos se validan; los errores del horario almacenado se notifican, no se interpreta una configuración inválida como abierto.
+En **Cierre diario**, el selector cambia solo la vista previa. Administración puede pulsar **Usar siempre este criterio** y recibe «Guardado: los próximos cierres usarán este criterio». El informe también muestra el cobro por método, entregados sin cobrar, cuentas abiertas y cuentas anuladas.
 
-### Contrato y funcionamiento
+| Ruta | Permiso | Comportamiento |
+|---|---|---|
+| `GET /admin/cierres/:fecha` | Personal autenticado | Cierre guardado o vista previa según la ficha |
+| `GET /admin/cierres/:fecha?criterio=entregados` | Personal autenticado | Vista previa alternativa; no cambia la ficha |
+| `GET /admin/cierres/:fecha/csv` | Personal autenticado | CSV UTF-8 con criterio, métodos de pago y pendientes |
+| `PATCH /admin/negocio/cierre` | Solo administración | Cuerpo `{ "cierre_criterio": "cobrados" }`; cambia únicamente esa clave |
+| `POST /admin/cierres` | Solo administración | Cuerpo `{ "fecha": "AAAA-MM-DD", "forzar": false }`; guarda con el criterio actual |
+| `GET /n8n/cierres/:fecha` | `X-Api-Key` existente | El mismo informe y la misma previsualización |
+| `POST /n8n/cierres` | `X-Api-Key` existente | Cuerpo `{ "fecha": "AAAA-MM-DD", "forzar": false }`; mismo guardado que administración |
 
-- `GET /horario/estado`, público y sin caché: `{ abierto, siguiente_apertura, texto }`. Mientras está abierto, `siguiente_apertura` es `null`. Home y carta refrescan el mismo texto cada 30 segundos.
-- `GET /horario/estado?recogida=true` añade `recogida: { fecha, opciones: [{ hora, instante }] }` o `null`. Solo el formulario pide esta lista de minutos válidos; `instante` es ISO y la etiqueta está en Madrid. En octubre las horas repetidas incluyen su zona.
-- Con el local cerrado, para llevar y WhatsApp se aceptan con `fuera_horario: true`, `atender_desde` y **fecha/correlativo del día de apertura**. Se mantiene la fecha real de recepción en `created_at`; así el cierre del día de preparación no pierde estos pedidos.
-- La hora de recogida debe estar dentro de un tramo abierto, fuera de festivos y no ser anterior a `atender_desde`. No se aplica el límite antiguo de 48 horas, que impediría recoger tras vacaciones o fines de semana largos.
-- Un pedido de mesa cerrado devuelve `409` con la alternativa para recoger. Si no se encuentra ninguna apertura, ambos canales devuelven `409` e indican que hay que llamar. No se guarda un pedido, abre una cuenta ni descuenta stock en esos rechazos.
-- Los pedidos aceptados reservan stock al crearse, como los inmediatos. Se pueden cancelar desde la sección de programados y se devuelve ese stock; no se pueden poner a preparar antes de su apertura.
-- Barra muestra **Programados para la apertura**, plegado inicialmente. Al llegar `atender_desde`, el reloj los mueve a **Nuevos** y avisa una sola vez; ni la recepción anticipada ni las reconexiones duplican el aviso. Cocina no los incluye hasta entonces y la espera empieza en la apertura, no la noche anterior.
-- Cambiar después la ficha no reprograma los pedidos ya confirmados: conservan la hora comunicada al cliente.
+El informe devuelve `resumen.criterio = { valor, descripcion }`, `cobro`, `pendiente_cobro`, `anuladas`, los desgloses excluyentes, `guardado`, `cerrado_at`, `cerrado_por`, `origen`, `criterio_configurado` y `hoy`. El criterio del resumen es el que realmente se aplicó; `criterio_configurado` puede ser distinto en una vista previa o en un cierre antiguo. El cuerpo del guardado no admite un criterio alternativo. Un `PUT /admin/negocio` de un cliente antiguo que omita el nuevo campo conserva la elección existente.
 
-### Prueba manual en una base de pruebas
+Los cierres guardados **no se recalculan**: consultar con otro criterio, cambiar la ficha o reintentar un POST conserva el resumen original. El primer guardado devuelve `201`; los reintentos, `200`. Se conserva quién lo guardó o si procedió de n8n. CSV e impresión muestran también el criterio guardado. No se puede guardar una fecha futura.
 
-1. Guarda una ficha con horario de prueba `07:00–19:00` todos los días y añade la fecha actual de Madrid a `dias_cerrado`. Consulta `/horario/estado?recogida=true`: debe indicar cerrado y devolver la apertura de mañana.
-2. Desde la carta, añade un producto y envía un pedido **para recoger**. El aviso y la opción «En cuanto abramos» muestran la apertura; las horas seleccionables pertenecen solo a ese día y al tramo permitido.
-3. Comprueba en la respuesta y en `/pedidos/:codigo` que `fuera_horario` es `true`, `atender_desde` coincide con la apertura y `fecha`/`numero_dia` son del día de preparación. El seguimiento confirma día y hora, con **Recibido** marcado y el resto en espera.
-4. Abre Barra: está en **Programados para la apertura**, no en Nuevos y no suena al recibirlo. Cocina no lo muestra. En la base de pruebas, adelanta únicamente su `atender_desde` a un instante pasado; tras el refresco del reloj pasa a Nuevos y avisa una vez. No hagas esta manipulación en producción.
-5. Intenta crear un pedido de mesa con un QR válido: debe responder `409` «El local está cerrado ahora mismo…», sin crear cuenta ni consumir stock.
-6. Restaura la ficha de prueba o elimina el entorno aislado. Las pruebas automatizadas crean su propio esquema con `DATABASE_URL_TEST` y no alteran producción.
+Al cerrar **hoy**, el criterio de cobro bloquea si quedan cuentas abiertas o entregados sin cobrar, además de pedidos pendientes; la administración puede confirmar `forzar: true`. Los otros criterios bloquean los nuevos, preparando y listos que no sean ventas. El cierre no modifica pedidos ni pagos y no impide recibir pedidos posteriores.
+
+### Automatizar con n8n
+
+Usa un nodo **Schedule Trigger** en zona **Europe/Madrid**, tras el fin de jornada. Un **HTTP Request** hace `POST http://lasdelicias-api:3001/n8n/cierres`, con una credencial Header Auth `X-Api-Key` que contenga la `N8N_API_KEY` ya configurada y JSON:
+
+```json
+{ "fecha": "{{ $now.setZone('Europe/Madrid').minus({ days: 1 }).toFormat('yyyy-MM-dd') }}" }
+```
+
+La expresión del ejemplo cierra **ayer** y es adecuada para ejecutarlo después de medianoche. Para cerrar hoy antes de medianoche, elimina `.minus({ days: 1 })`: respetará el bloqueo de pedidos en curso. Ajusta el nombre del contenedor a tu red existente. No hay automatización programada por defecto ni se modifican archivos de entorno. La misma fecha se puede reintentar sin duplicar ni alterar el cierre.
+
+Las pruebas de `test/cierres.test.js` se ejecutan junto a las de cuentas con `DATABASE_URL_TEST` y comprueban que sumar listos añade exactamente su importe, sin solapar ventas y en curso, además de todas las rutas, roles, CSV e históricos.
 
 ## Instalación rápida (un comando)
 
@@ -182,7 +190,7 @@ La API envía un POST JSON a `http://n8n:5678/webhook/las-delicias` con la cabec
 
 | `tipo` | Cuándo | Contenido |
 |---|---|---|
-| `pedido.creado` | Entra un pedido (web, mesa o WhatsApp) | `pedido` completo con líneas, teléfono, tipo, `mesa_nombre`, `fuera_horario` y `atender_desde` |
+| `pedido.creado` | Entra un pedido (web, mesa o WhatsApp) | `pedido` completo con líneas, teléfono, tipo y `mesa_nombre` |
 | `pedido.estado` | El personal lo mueve de columna | `pedido` + `estado_anterior` |
 | `pedido.mesa` | Un pedido cambia de mesa | `pedido` + `estado_anterior` |
 | `mesa.llamada` | Una mesa llama al personal o pide la cuenta | `llamada` con `mesa_numero`, `mesa_nombre`, `motivo` y `created_at` |
@@ -192,14 +200,11 @@ La API envía un POST JSON a `http://n8n:5678/webhook/las-delicias` con la cabec
 El Switch lee **`body.tipo`**, porque n8n coloca el JSON recibido dentro de `body`. Incluye estas acciones:
 
 - **Pedido listo**: WhatsApp por Evolution únicamente para `pedido.estado`, estado `listo`, tipo distinto de `mesa` y teléfono no vacío. El mensaje usa el nombre del cliente y `numero_dia`, no el identificador interno.
-- **Recibido fuera de horario**: para `pedido.creado`, `pedido.fuera_horario === true` y teléfono no vacío. Confirma al instante el número de la apertura y cuándo se preparará, con fecha española y hora de Madrid. Comparte **Normalizar teléfono** y **Avisar por WhatsApp**, sin duplicar credenciales ni enviar también el aviso de listo.
 - **Llamada de mesa**: Telegram al grupo del personal, distinguiendo atención y cuenta. Muestra `mesa_nombre` o, si está vacío, `Mesa N`.
 - **Stock**: Telegram al dueño para mínimos y agotados.
 - **Opinión nueva**: Telegram al dueño, indicando si procede de un pedido verificado.
 
-Las salidas **Pedido creado · reservado** (el resto de pedidos creados), **Cambio de mesa** y **Otros eventos** quedan sin conectar, preparadas para ampliaciones. Los textos dinámicos de Telegram se escapan para que nombres y comentarios con `<`, `>` o `&` no se interpreten como HTML.
-
-La confirmación de apertura dice «¡Hola {nombre}! Hemos recibido tu pedido #{numero_dia} en Las Delicias. Ahora estamos cerrados: lo prepararemos {día} a partir de las {hora} y te avisaremos cuando esté listo. ¡Gracias!». Una fecha de apertura inválida detiene la ejecución; no se sustituye por otra inventada. Importa de nuevo el JSON o añade la rama al flujo ya configurado sin perder sus credenciales. Para WhatsApp, el agente debe usar la respuesta de creación y esta confirmación, sin prometer que se está preparando mientras el local siga cerrado.
+Las salidas **Pedido creado**, **Cambio de mesa** y **Otros eventos** quedan sin conectar, preparadas para ampliaciones. Los textos dinámicos de Telegram se escapan para que nombres y comentarios con `<`, `>` o `&` no se interpreten como HTML.
 
 ### Preparar Telegram
 
@@ -272,7 +277,6 @@ Cabecera `X-Api-Key: <N8N_API_KEY>`:
 |---|---|---|
 | GET | `/productos` | Carta con disponibilidad (pública) |
 | GET | `/negocio` | Dirección, horario, teléfono, Instagram, servicios (pública) |
-| GET | `/horario/estado` | Apertura actual y siguiente, con el mismo cálculo que al crear pedidos (pública) |
 | POST | `/n8n/pedidos` | Crear pedido de WhatsApp: `{ items:[{producto_id,cantidad}], nombre, telefono, hora_recogida?, notas? }` — el precio lo calcula la API |
 | GET | `/n8n/pedidos/:codigo` | Consultar un pedido |
 | PATCH | `/n8n/pedidos/:id` | Cambiar estado: `{ "estado": "listo" }` |
