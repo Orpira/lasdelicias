@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CalendarDays, Download, LockKeyhole, Printer, RefreshCw, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api, apiArchivo, ErrorApi, euros } from "../../lib/api";
-import type { GrupoCierre, InformeCierre } from "../../types/cierre";
+import type { CifrasCierre, GrupoCierre, InformeCierre } from "../../types/cierre";
 
 function fechaMadrid() {
 	const partes = Object.fromEntries(new Intl.DateTimeFormat("es-ES", {
@@ -156,7 +156,7 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 						<tbody>{resumen.por_producto.map((fila) => <tr key={`${fila.producto_id}-${fila.nombre}-${fila.categoria}`} className="break-inside-avoid border-b border-delicias/10"><th className="break-words py-3 pr-2 font-semibold">{fila.nombre}<span className="mt-1 block text-xs font-normal text-tinta/70">{fila.categoria}</span></th><td className="py-3 text-right">{fila.unidades}</td><td className="py-3 text-right">{euros(fila.importe)}</td></tr>)}</tbody>
 					</table>}
 				</section>
-				<div className="mt-6"><TablaVentas titulo="Ventas por hora" filas={resumen.por_hora.map((fila) => ({ ...fila, nombre: `${String(fila.hora).padStart(2, "0")}:00` }))} /></div>
+				<HorasVentas filas={resumen.por_hora} />
 				{informe.cerrado_at && <p className="mt-5 text-sm text-tinta/70">Guardado el {new Date(informe.cerrado_at).toLocaleString("es-ES", { timeZone: resumen.zona_horaria })} · {informe.origen === "n8n" ? "Automatización n8n" : "Administración"}</p>}
 					</>;
 				})()}
@@ -177,4 +177,35 @@ function Destacado({ titulo, valor, rojo = false }: { titulo: string; valor: str
 
 function TablaVentas({ titulo, filas }: { titulo: string; filas: GrupoCierre[] }) {
 	return <section><h2 className="mb-2 text-xl font-extrabold tracking-titular">{titulo}</h2>{filas.length === 0 ? <p className="text-sm text-tinta/70">No hay ventas con este criterio.</p> : <table className="w-full table-fixed text-left text-sm"><thead><tr className="border-b border-delicias/20"><th className="py-2">Grupo</th><th className="w-16 py-2 text-right">Pedidos</th><th className="w-24 py-2 text-right">Importe</th></tr></thead><tbody>{filas.map((fila) => <tr key={fila.nombre} className="border-b border-delicias/10"><th className="break-words py-3 pr-2">{fila.nombre}</th><td className="py-3 text-right">{fila.pedidos}</td><td className="py-3 text-right">{euros(fila.importe)}</td></tr>)}</tbody></table>}</section>;
+}
+
+function HorasVentas({ filas }: { filas: (CifrasCierre & { hora: number })[] }) {
+	const activas = filas.filter((fila) => fila.pedidos > 0 || Number(fila.importe) > 0);
+	const pico = activas.reduce<(CifrasCierre & { hora: number }) | null>(
+		(anterior, fila) => !anterior || fila.importe > anterior.importe ? fila : anterior,
+		null,
+	);
+	const maximo = Math.max(...activas.map((fila) => Number(fila.importe)), 1);
+
+	return <section className="mt-6 rounded-2xl border border-delicias/15 bg-merengue/30 p-4 md:p-5 print:border-0 print:bg-transparent print:p-0">
+		<div className="flex flex-wrap items-end justify-between gap-2">
+			<div>
+				<h2 className="text-xl font-extrabold tracking-titular">Ritmo de ventas</h2>
+				<p className="mt-1 text-sm text-tinta/70">{activas.length ? `${activas.length} franjas con actividad` : "Sin ventas registradas por hora"}</p>
+			</div>
+			{pico && <p className="rounded-full bg-white px-3 py-1 text-sm font-bold text-delicias shadow-sm">Pico: {String(pico.hora).padStart(2, "0")}:00 · {euros(pico.importe)}</p>}
+		</div>
+		{activas.length > 0 && <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+			{activas.map((fila) => <div key={fila.hora} className="rounded-xl border border-delicias/10 bg-white p-3 shadow-sm">
+				<div className="flex items-center justify-between gap-3 text-sm">
+					<strong>{String(fila.hora).padStart(2, "0")}:00</strong>
+					<span className="font-semibold">{fila.pedidos} {fila.pedidos === 1 ? "pedido" : "pedidos"}</span>
+				</div>
+				<div className="mt-2 h-2 overflow-hidden rounded-full bg-merengue" aria-hidden="true">
+					<div className="h-full rounded-full bg-delicias transition-all" style={{ width: `${Math.max(8, Number(fila.importe) / maximo * 100)}%` }} />
+				</div>
+				<p className="mt-2 text-right text-lg font-extrabold">{euros(fila.importe)}</p>
+			</div>)}
+		</div>}
+	</section>;
 }
