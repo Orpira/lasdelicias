@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CalendarDays, CheckCircle2, Download, LockKeyhole, Printer, RefreshCw, Save } from "lucide-react";
+import { CalendarDays, Download, LockKeyhole, Printer, RefreshCw, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api, apiArchivo, ErrorApi, euros } from "../../lib/api";
 import type { GrupoCierre, InformeCierre } from "../../types/cierre";
@@ -13,7 +13,6 @@ function fechaMadrid() {
 
 export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean; alCaducar: () => void }) {
 	const [fecha, setFecha] = useState(fechaMadrid);
-	const [incluyeListosVista, setIncluyeListosVista] = useState<boolean | null>(null);
 	const [informe, setInforme] = useState<InformeCierre | null>(null);
 	const [cargando, setCargando] = useState(true);
 	const [accion, setAccion] = useState<"criterio" | "cierre" | "csv" | null>(null);
@@ -31,8 +30,7 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 			setCargando(true);
 			setError("");
 			try {
-				const consulta = incluyeListosVista === null ? "" : `?incluye_listos=${incluyeListosVista}`;
-				const datos = await api<InformeCierre>(`/admin/cierres/${fecha}${consulta}`, { auth: true });
+				const datos = await api<InformeCierre>(`/admin/cierres/${fecha}`, { auth: true });
 				if (vigente) setInforme(datos);
 			} catch (fallo) {
 				if (vigente) { setInforme(null); mostrarError(fallo); }
@@ -42,28 +40,13 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 		}
 		void cargar();
 		return () => { vigente = false; };
-	}, [fecha, incluyeListosVista, revision, mostrarError]);
+	}, [fecha, revision, mostrarError]);
 
 	const resumen = informe?.resumen;
-	const criterio = resumen?.criterio.incluye_listos ?? false;
-	const configurado = informe?.criterio_configurado ?? false;
-	const difiere = Boolean(informe && !informe.guardado && criterio !== configurado);
 	const ocupado = cargando || accion !== null;
 
-	async function guardarCriterio() {
-		setAccion("criterio"); setError(""); setAviso("");
-		try {
-			await api("/admin/negocio/cierre", {
-				metodo: "PATCH", auth: true, cuerpo: { cierre_incluye_listos: criterio },
-			});
-			setInforme((actual) => actual ? { ...actual, criterio_configurado: criterio } : actual);
-			setAviso("Guardado: los próximos cierres usarán este criterio");
-		} catch (fallo) { mostrarError(fallo); }
-		finally { setAccion(null); }
-	}
-
 	async function guardar() {
-		if (!window.confirm(`¿Guardar el cierre del ${fecha}? Se usará el criterio configurado en la ficha.`)) return;
+		if (!window.confirm(`¿Guardar el cierre del ${fecha}? Solo contará pedidos cobrados.`)) return;
 		setAccion("cierre"); setError(""); setAviso("");
 		try {
 			let datos: InformeCierre;
@@ -74,7 +57,6 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 				datos = await api<InformeCierre>("/admin/cierres", { metodo: "POST", auth: true, cuerpo: { fecha, forzar: true } });
 			}
 			setInforme(datos);
-			setIncluyeListosVista(null);
 			setAviso(`Cierre guardado con: ${datos.resumen.criterio.descripcion}.`);
 		} catch (fallo) { mostrarError(fallo); }
 		finally { setAccion(null); }
@@ -83,8 +65,7 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 	async function descargar() {
 		setAccion("csv"); setError("");
 		try {
-			const consulta = `?incluye_listos=${criterio}`;
-			const archivo = await apiArchivo(`/admin/cierres/${fecha}/csv${consulta}`, { auth: true });
+			const archivo = await apiArchivo(`/admin/cierres/${fecha}/csv`, { auth: true });
 			const url = URL.createObjectURL(archivo);
 			const enlace = document.createElement("a");
 			try {
@@ -109,7 +90,7 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 				<div className="flex flex-wrap items-end gap-2 print:hidden">
 					<label className="text-sm font-bold" htmlFor="fecha-cierre">Fecha
 						<input id="fecha-cierre" type="date" value={fecha} max={informe?.hoy ?? fechaMadrid()} disabled={accion !== null}
-							onChange={(evento) => { setFecha(evento.target.value); setIncluyeListosVista(null); setInforme(null); setAviso(""); }}
+							onChange={(evento) => { setFecha(evento.target.value); setInforme(null); setAviso(""); }}
 							className="mt-1 block min-h-[44px] rounded-lg border border-delicias/20 bg-white px-3 font-normal" />
 					</label>
 					<button onClick={() => setRevision((actual) => actual + 1)} disabled={ocupado || !fecha}
@@ -127,18 +108,9 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 					{informe.guardado ? <LockKeyhole className="h-5 w-5" aria-hidden="true" /> : <CalendarDays className="h-5 w-5" aria-hidden="true" />}
 					{informe.guardado ? "Cierre guardado" : "Vista previa sin guardar"}
 				</p>
-				<div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
-					<label className="flex min-h-[44px] cursor-pointer items-center gap-3 font-bold">
-						<input type="checkbox" checked={criterio} disabled={informe.guardado || ocupado}
-							onChange={(evento) => { setIncluyeListosVista(evento.target.checked); setAviso(""); }}
-							className="h-5 w-5 accent-delicias" />
-						Contar también los pedidos listos sin recoger
-					</label>
-					{!informe.guardado && difiere && esAdmin && <button onClick={guardarCriterio} disabled={ocupado}
-						className="flex min-h-[44px] items-center gap-2 rounded-lg bg-delicias px-4 py-2 font-bold text-white disabled:opacity-50">
-						<CheckCircle2 className="h-4 w-4" aria-hidden="true" /> {accion === "criterio" ? "Guardando criterio…" : "Usar siempre este criterio"}
-					</button>}
-				</div>
+				<p className="mb-4 rounded-xl border border-delicias/15 bg-merengue/30 p-4 font-semibold print:hidden">
+					Las ventas del cierre cuentan cuando el pedido está cobrado.
+				</p>
 				<p className="mb-4 rounded-xl bg-merengue/50 p-4 font-bold">{informe.guardado ? "Calculado con: " : "Criterio aplicado: "}{resumen.criterio.descripcion}</p>
 				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 					<Destacado titulo="Total de ventas" valor={euros(resumen.totales.importe)} />
@@ -172,7 +144,7 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 				{informe.cerrado_at && <p className="mt-5 text-sm text-tinta/70">Guardado el {new Date(informe.cerrado_at).toLocaleString("es-ES", { timeZone: resumen.zona_horaria })} · {informe.origen === "n8n" ? "Automatización n8n" : "Administración"}</p>}
 			</article>}
 			{informe && <div className="mt-5 flex flex-wrap gap-3 print:hidden">
-				{esAdmin && !informe.guardado && <button onClick={guardar} disabled={ocupado || difiere}
+				{esAdmin && !informe.guardado && <button onClick={guardar} disabled={ocupado}
 					className="flex min-h-[44px] items-center gap-2 rounded-xl bg-delicias px-4 py-3 font-bold text-white disabled:opacity-50"><Save className="h-5 w-5" aria-hidden="true" /> {accion === "cierre" ? "Guardando cierre…" : "Guardar cierre"}</button>}
 				<button onClick={descargar} disabled={ocupado} className="flex min-h-[44px] items-center gap-2 rounded-xl border border-delicias/20 bg-white px-4 py-3 font-bold disabled:opacity-50"><Download className="h-5 w-5" aria-hidden="true" /> Descargar CSV</button>
 				<button onClick={() => window.print()} disabled={ocupado} className="flex min-h-[44px] items-center gap-2 rounded-xl border border-delicias/20 bg-white px-4 py-3 font-bold disabled:opacity-50"><Printer className="h-5 w-5" aria-hidden="true" /> Imprimir informe</button>

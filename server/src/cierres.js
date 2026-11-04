@@ -8,11 +8,11 @@ const NOMBRES_TIPO = { mesa: "En mesa", recoger: "Para recoger", whatsapp: "What
 const METODOS = ["efectivo", "tarjeta", "bizum", "otro"];
 
 export function estadosQueCuentan(incluyeListos) {
-	return incluyeListos ? ["entregado", "listo"] : ["entregado"];
+	return ["cobrado"];
 }
 
 function descripcionCriterio(incluyeListos) {
-	return incluyeListos ? "Pedidos entregados y listos para recoger" : "Solo pedidos entregados";
+	return "Solo pedidos cobrados";
 }
 
 function exigirAdministracion(usuario) {
@@ -25,7 +25,7 @@ async function contextoCierre(conexion) {
 		[config.zonaHoraria],
 	);
 	if (!negocio) throw new ErrorOperacion("No existe la ficha del negocio para calcular el cierre", 500);
-	return { incluyeListos: negocio.datos.cierre_incluye_listos === true, hoy: negocio.hoy };
+	return { incluyeListos: false, hoy: negocio.hoy };
 }
 
 function criterio(incluyeListos) {
@@ -69,13 +69,12 @@ async function cierreGuardado(conexion, fecha) {
 }
 
 async function calcularResumen(conexion, fecha, incluyeListos) {
-	const estados = estadosQueCuentan(incluyeListos);
 	const { rows: [datos] } = await conexion.query(
 		`WITH del_dia AS MATERIALIZED (
 			SELECT id, tipo, estado, total, created_at, pagado_at, metodo_pago
 			FROM pedidos WHERE fecha = $1::date
 		), ventas AS (
-			SELECT * FROM del_dia WHERE estado = ANY($3::text[])
+			SELECT * FROM del_dia WHERE pagado_at IS NOT NULL AND estado <> 'cancelado'
 		), lineas AS (
 			SELECT v.id AS pedido_id, i.producto_id, i.nombre, i.cantidad, i.precio_unitario,
 				COALESCE(pr.categoria, 'Sin categoría') AS categoria
@@ -83,17 +82,17 @@ async function calcularResumen(conexion, fecha, incluyeListos) {
 			LEFT JOIN productos pr ON pr.id = i.producto_id
 		), cifras AS (
 			SELECT
-				count(*) FILTER (WHERE estado = ANY($3::text[]))::int AS pedidos,
-				COALESCE(sum(total) FILTER (WHERE estado = ANY($3::text[])), 0) AS importe,
-				COALESCE(round(avg(total) FILTER (WHERE estado = ANY($3::text[])), 2), 0) AS ticket_medio,
+				count(*) FILTER (WHERE pagado_at IS NOT NULL AND estado <> 'cancelado')::int AS pedidos,
+				COALESCE(sum(total) FILTER (WHERE pagado_at IS NOT NULL AND estado <> 'cancelado'), 0) AS importe,
+				COALESCE(round(avg(total) FILTER (WHERE pagado_at IS NOT NULL AND estado <> 'cancelado'), 2), 0) AS ticket_medio,
 				count(*) FILTER (WHERE estado = 'entregado')::int AS entregados_pedidos,
 				COALESCE(sum(total) FILTER (WHERE estado = 'entregado'), 0) AS entregados_importe,
 				count(*) FILTER (WHERE estado = 'entregado' AND pagado_at IS NULL)::int AS entregados_sin_cobrar_pedidos,
 				COALESCE(sum(total) FILTER (WHERE estado = 'entregado' AND pagado_at IS NULL), 0) AS entregados_sin_cobrar_importe,
 				count(*) FILTER (WHERE estado = 'listo')::int AS listos_pedidos,
 				COALESCE(sum(total) FILTER (WHERE estado = 'listo'), 0) AS listos_importe,
-				count(*) FILTER (WHERE estado IN ('nuevo','preparando') OR (estado = 'listo' AND NOT $4))::int AS en_curso_pedidos,
-				COALESCE(sum(total) FILTER (WHERE estado IN ('nuevo','preparando') OR (estado = 'listo' AND NOT $4)), 0) AS en_curso_importe,
+				count(*) FILTER (WHERE estado IN ('nuevo','preparando','listo') AND pagado_at IS NULL)::int AS en_curso_pedidos,
+				COALESCE(sum(total) FILTER (WHERE estado IN ('nuevo','preparando','listo') AND pagado_at IS NULL), 0) AS en_curso_importe,
 				count(*) FILTER (WHERE estado = 'cancelado')::int AS cancelados_pedidos,
 				COALESCE(sum(total) FILTER (WHERE estado = 'cancelado'), 0) AS cancelados_importe,
 				count(*) FILTER (WHERE pagado_at IS NOT NULL AND estado <> 'cancelado')::int AS cobrados_pedidos,
@@ -133,7 +132,7 @@ async function calcularResumen(conexion, fecha, incluyeListos) {
 			COALESCE((SELECT jsonb_agg(m ORDER BY m.metodo) FROM metodos m), '[]'::jsonb) AS metodos,
 			(SELECT row_to_json(c) FROM cuentas_abiertas c) AS cuentas_abiertas,
 			(SELECT row_to_json(a) FROM anuladas a) AS anuladas`,
-		[fecha, config.zonaHoraria, estados, incluyeListos],
+		[fecha, config.zonaHoraria],
 	);
 	const cifras = datos.cifras;
 	const porHora = new Map(datos.horas.map((fila) => [fila.hora, fila]));
@@ -190,8 +189,8 @@ export async function configurarCierre(datos, usuario) {
 
 async function bloqueosDeHoy(conexion, fecha, incluyeListos) {
 	const { rows: pedidos } = await conexion.query(
-		"SELECT estado, numero_dia, total FROM pedidos WHERE fecha = $1::date AND (estado IN ('nuevo','preparando') OR (estado = 'listo' AND NOT $2)) ORDER BY numero_dia",
-		[fecha, incluyeListos],
+		"SELECT estado, numero_dia, total FROM pedidos WHERE fecha = $1::date AND estado <> 'cancelado' AND pagado_at IS NULL ORDER BY numero_dia",
+		[fecha],
 	);
 	const { rows: cuentas } = await conexion.query(
 		`SELECT mesa_numero, total FROM cuentas

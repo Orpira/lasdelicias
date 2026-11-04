@@ -67,11 +67,11 @@ Pruebas de integración: `npm --prefix server test`; con `DATABASE_URL_TEST` se 
 
 ## Cierre diario de ventas
 
-En `/admin/cierres`, el personal puede consultar la fecha de Madrid, sus ventas, cobros, pendientes y pedidos cancelados. El interruptor **Contar también los pedidos listos sin recoger** cambia la vista previa; **Usar siempre este criterio** lo guarda para los próximos cierres y requiere administración.
+En `/admin/cierres`, el personal puede consultar la fecha de Madrid, sus ventas, cobros, pendientes y pedidos cancelados. Una venta solo cuenta cuando el pedido está cobrado.
 
-Administración puede guardar una fotografía inmutable del resumen y del criterio empleado. Los cierres de hoy bloquean si quedan pedidos nuevos o preparando; los listos también bloquean cuando no se incluyen, y dejan de bloquear cuando sí se incluyen. Las cuentas abiertas siguen requiriendo confirmación. Cambiar la configuración, cobrar después o recibir nuevos pedidos no recalcula un cierre guardado ni bloquea la recepción. El desglose siempre muestra entregados, listos sin recoger, en curso y cancelados sin contar ningún pedido dos veces.
+Administración puede guardar una fotografía inmutable del resumen y del criterio empleado. Los cierres de hoy bloquean si queda cualquier pedido no cancelado sin cobrar, o una cuenta abierta, salvo que se fuerce el cierre. Cobrar después o recibir nuevos pedidos no recalcula un cierre guardado. El desglose siempre muestra entregados, listos sin recoger, en curso y cancelados sin contar ningún pedido dos veces.
 
-La migración `011_criterio_venta_cierres.sql` añade `negocio.datos.cierre_incluye_listos` con valor `false` si no existe y normaliza cierres anteriores. La previsualización acepta `?incluye_listos=true|false`; el CSV y el informe impreso incluyen el criterio real. n8n puede consultar y guardar cierres con ese criterio; los reintentos devuelven el mismo cierre. Detalles en [despliegue](server/DESPLIEGUE.md#cierre-diario-y-criterio-de-venta).
+La migración `011_criterio_venta_cierres.sql` conserva compatibilidad con cierres anteriores, pero los nuevos cierres aplican siempre el criterio «Solo pedidos cobrados». El CSV y el informe impreso incluyen el criterio real. n8n puede consultar y guardar cierres; los reintentos devuelven el mismo cierre. Detalles en [despliegue](server/DESPLIEGUE.md#cierre-diario-y-criterio-de-venta).
 
 `npm --prefix server test` incluye los casos de ambos criterios, sus desgloses, permisos, fechas de Madrid, guardados concurrentes e históricos inmutables. Usa una base dedicada en `DATABASE_URL_TEST`; sin ella, las suites se omiten.
 
