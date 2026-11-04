@@ -23,6 +23,8 @@ export interface ResumenCierre {
 	pendiente_cobro: {
 		entregados_sin_cobrar: CifrasCierre;
 		cuentas_abiertas: CifrasCierre;
+		pedidos: { id: string; numero_dia: number; nombre_cliente: string; tipo: "mesa" | "recoger" | "whatsapp"; total: number; estado: string }[];
+		cuentas: { id: string; mesa_numero: number; total: number }[];
 	};
 	anuladas: { cuentas: number; importe: number; detalle: { id: string; mesa_numero: number; importe: number; motivo: string | null }[] };
 	cobrados: CifrasCierre;

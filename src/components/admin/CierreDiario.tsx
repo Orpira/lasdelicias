@@ -126,6 +126,17 @@ export default function CierreDiario({ esAdmin, alCaducar }: { esAdmin: boolean;
 				{(resumen.pendiente_cobro.entregados_sin_cobrar.pedidos || resumen.pendiente_cobro.cuentas_abiertas.pedidos) > 0 && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
 					<strong>Pendiente de cobro:</strong> {resumen.pendiente_cobro.entregados_sin_cobrar.pedidos} entregados y {resumen.pendiente_cobro.cuentas_abiertas.pedidos} cuentas abiertas. <Link className="font-bold underline" to="/admin/barra">Ir a Barra para cobrar</Link>
 				</p>}
+				{(resumen.pendiente_cobro.pedidos.length || resumen.pendiente_cobro.cuentas.length) > 0 && <section className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
+					<h2 className="font-extrabold">Detalle de pendientes de cobro</h2>
+					<div className="mt-2 grid gap-2 sm:grid-cols-2">
+						{resumen.pendiente_cobro.pedidos.map((pedido) => <p key={pedido.id} className="rounded-lg bg-white p-3">
+							<strong>Pedido #{pedido.numero_dia}</strong> · {pedido.nombre_cliente} · {pedido.tipo === "whatsapp" ? "WhatsApp" : pedido.tipo === "recoger" ? "Para recoger" : "Mesa"} · <strong>{euros(pedido.total)}</strong>
+						</p>)}
+						{resumen.pendiente_cobro.cuentas.map((cuenta) => <p key={cuenta.id} className="rounded-lg bg-white p-3">
+							<strong>Cuenta mesa {cuenta.mesa_numero}</strong> · <strong>{euros(cuenta.total)}</strong>
+						</p>)}
+					</div>
+				</section>}
 				{resumen.anuladas.cuentas > 0 && <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
 					<strong>Cuentas anuladas:</strong> {resumen.anuladas.detalle.map((cuenta) => `Mesa ${cuenta.mesa_numero}: ${cuenta.motivo ?? "sin motivo"}`).join(" · ")}
 				</div>}

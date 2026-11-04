@@ -43,9 +43,11 @@ function historicoCompatible(resumen) {
 		entregados_sin_cobrar: resumen.entregados_sin_cobrar ?? { pedidos: 0, importe: 0 },
 		listos_sin_recoger: resumen.listos_sin_recoger ?? { pedidos: 0, importe: 0 },
 		cobro: resumen.cobro ?? { total_cobrado: 0, por_metodo: METODOS.map((metodo) => ({ metodo, pedidos: 0, importe: 0 })) },
-		pendiente_cobro: resumen.pendiente_cobro ?? {
-			entregados_sin_cobrar: { pedidos: 0, importe: 0 },
-			cuentas_abiertas: { pedidos: 0, importe: 0 },
+		pendiente_cobro: {
+			entregados_sin_cobrar: resumen.pendiente_cobro?.entregados_sin_cobrar ?? { pedidos: 0, importe: 0 },
+			cuentas_abiertas: resumen.pendiente_cobro?.cuentas_abiertas ?? { pedidos: 0, importe: 0 },
+			pedidos: resumen.pendiente_cobro?.pedidos ?? [],
+			cuentas: resumen.pendiente_cobro?.cuentas ?? [],
 		},
 		anuladas: resumen.anuladas ?? { cuentas: 0, importe: 0, detalle: [] },
 	};
@@ -117,6 +119,17 @@ async function calcularResumen(conexion, fecha, incluyeListos) {
 		), cuentas_abiertas AS (
 			SELECT count(*)::int AS pedidos, COALESCE(sum(total), 0) AS importe
 			FROM cuentas WHERE estado = 'abierta' AND (abierta_at AT TIME ZONE $2)::date = $1::date
+		), pendientes_pedidos AS (
+			SELECT COALESCE(jsonb_agg(jsonb_build_object(
+				'id', id, 'numero_dia', numero_dia, 'nombre_cliente', nombre_cliente,
+				'tipo', tipo, 'total', total, 'estado', estado
+			) ORDER BY created_at, id), '[]'::jsonb) AS detalle
+			FROM del_dia WHERE estado = 'entregado' AND pagado_at IS NULL
+		), pendientes_cuentas AS (
+			SELECT COALESCE(jsonb_agg(jsonb_build_object(
+				'id', id, 'mesa_numero', mesa_numero, 'total', total
+			) ORDER BY abierta_at, id), '[]'::jsonb) AS detalle
+			FROM cuentas WHERE estado = 'abierta' AND (abierta_at AT TIME ZONE $2)::date = $1::date
 		), anuladas AS (
 			SELECT count(*)::int AS cuentas, COALESCE(sum(total), 0) AS importe,
 				COALESCE(jsonb_agg(jsonb_build_object(
@@ -131,6 +144,8 @@ async function calcularResumen(conexion, fecha, incluyeListos) {
 			COALESCE((SELECT jsonb_agg(h ORDER BY h.hora) FROM horas h), '[]'::jsonb) AS horas,
 			COALESCE((SELECT jsonb_agg(m ORDER BY m.metodo) FROM metodos m), '[]'::jsonb) AS metodos,
 			(SELECT row_to_json(c) FROM cuentas_abiertas c) AS cuentas_abiertas,
+			(SELECT detalle FROM pendientes_pedidos) AS pendientes_pedidos,
+			(SELECT detalle FROM pendientes_cuentas) AS pendientes_cuentas,
 			(SELECT row_to_json(a) FROM anuladas a) AS anuladas`,
 		[fecha, config.zonaHoraria],
 	);
@@ -147,6 +162,8 @@ async function calcularResumen(conexion, fecha, incluyeListos) {
 		pendiente_cobro: {
 			entregados_sin_cobrar: { pedidos: cifras.entregados_sin_cobrar_pedidos, importe: cifras.entregados_sin_cobrar_importe },
 			cuentas_abiertas: datos.cuentas_abiertas,
+			pedidos: datos.pendientes_pedidos,
+			cuentas: datos.pendientes_cuentas,
 		},
 		anuladas: datos.anuladas,
 		cobrados: { pedidos: cifras.cobrados_pedidos, importe: cifras.cobrados_importe },
