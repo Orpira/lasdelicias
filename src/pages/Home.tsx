@@ -6,7 +6,8 @@ import IconoMarca from "../components/IconoMarca";
 import SeccionOpiniones from "../components/SeccionOpiniones";
 import MapaBajoDemanda from "../components/MapaBajoDemanda";
 import { useCarrito } from "../lib/carrito";
-import { DIAS, enlaceMapa, estadoHoy, telefonoLegible, useNegocio } from "../lib/negocio";
+import { DIAS, enlaceMapa, telefonoLegible, useNegocio } from "../lib/negocio";
+import { useEstadoHorario } from "../lib/horario";
 import { useProductos } from "../lib/productos";
 import { euros } from "../lib/api";
 import { etiquetaMesa } from "../lib/mesa";
@@ -19,6 +20,7 @@ const PASOS = [
 
 export default function Home() {
 	const negocio = useNegocio();
+	const { estado, error: errorHorario, recargar: recargarHorario } = useEstadoHorario();
 	const { productos } = useProductos();
 	const carrito = useCarrito();
 	const vitrinaRef = useRef<HTMLDivElement>(null);
@@ -53,7 +55,6 @@ export default function Home() {
 		});
 	}
 
-	const estado = negocio ? estadoHoy(negocio.horario) : null;
 	const vitrina = (productos ?? []).filter((p) => p.disponible && p.imagen_url && p.categoria === "Pastelería");
 	const menuHoy = (productos ?? []).filter((p) => p.disponible && p.categoria === "Comida casera");
 	const whatsapp = negocio?.whatsapp.replace(/\D/g, "");
@@ -70,6 +71,7 @@ export default function Home() {
 								{estado.texto}
 							</p>
 						)}
+						{errorHorario && <p role="alert" className="mb-6 text-sm">No se pudo consultar el horario. <button onClick={recargarHorario} className="font-bold underline">Reintentar</button></p>}
 						<h1 className="text-[2.6rem] leading-[1.02] sm:text-6xl font-extrabold tracking-titular">
 							Pan, pasteles y comida casera en Calle Ayala
 						</h1>
@@ -79,7 +81,7 @@ export default function Home() {
 						<div className="mt-8 flex flex-wrap gap-3">
 							<Link to="/menu"
 								className="bg-white text-delicias-profundo font-bold text-lg px-6 py-3.5 rounded-xl hover:bg-merengue transition-colors">
-								{carrito.mesa ? `Pedir en ${etiquetaMesa(carrito.mesa, carrito.mesaNombre)}` : "Ver la carta y pedir"}
+								{carrito.mesa && estado?.abierto !== false ? `Pedir en ${etiquetaMesa(carrito.mesa, carrito.mesaNombre)}` : "Ver la carta y pedir"}
 							</Link>
 							{negocio && (
 								<a href={enlaceMapa(negocio.direccion)} target="_blank" rel="noopener noreferrer"

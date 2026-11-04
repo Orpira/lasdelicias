@@ -10,7 +10,7 @@
 # Variables opcionales:
 #   RAMA=main                                   rama a desplegar
 #   API_DOMINIO=api-delicias.orpira.es          dominio público de la API
-#   FRONT_ORIGENES="https://lasdelicias.vercel.app"   dominios del frontend (separados por comas)
+#   FRONT_ORIGENES="https://lasdelicias.orpira.es"   dominios del frontend (separados por comas)
 #   N8N_WEBHOOK_URL=https://n8n.orpira.es/webhook/las-delicias
 #   ADMIN_EMAIL=dueno@lasdelicias.es ADMIN_NOMBRE="Dueño"   crea la cuenta de administración
 set -euo pipefail
@@ -18,7 +18,7 @@ set -euo pipefail
 RAMA="${RAMA:-main}"
 DIR="${DIR:-/opt/lasdelicias}"
 API_DOMINIO="${API_DOMINIO:-api-delicias.orpira.es}"
-FRONT_ORIGENES="${FRONT_ORIGENES:-https://lasdelicias.vercel.app}"
+FRONT_ORIGENES="${FRONT_ORIGENES:-https://lasdelicias.orpira.es,https://lasdelicias-orpira-7163s-projects.vercel.app,https://lasdelicias-*-orpira-7163s-projects.vercel.app}"
 N8N_WEBHOOK_URL="${N8N_WEBHOOK_URL:-}"
 REPO="https://github.com/Orpira/lasdelicias.git"
 

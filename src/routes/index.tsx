@@ -9,6 +9,8 @@ import Admin from "../pages/Admin";
 import AvisoLegal from "../pages/legal/AvisoLegal";
 import Privacidad from "../pages/legal/Privacidad";
 import Cookies from "../pages/legal/Cookies";
+import Gracias from "../pages/Gracias";
+import VigilanteMesa from "../components/VigilanteMesa";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { CarritoProvider } from "../lib/carrito";
@@ -26,6 +28,7 @@ export default function App() {
 
 	return (
 		<CarritoProvider>
+			<VigilanteMesa activo={!esPanel} />
 			{!esPanel && <Navbar />}
 			<main className="bg-white min-h-[70vh]">
 				<Routes>
@@ -33,6 +36,7 @@ export default function App() {
 					<Route path="/menu" element={<Menu />} />
 					<Route path="/pedido" element={<Pedido />} />
 					<Route path="/pedido/:codigo" element={<Seguimiento />} />
+					<Route path="/gracias/:cuentaId" element={<Gracias />} />
 					<Route path="/m/:token" element={<MesaQr />} />
 					<Route path="/aviso-legal" element={<AvisoLegal />} />
 					<Route path="/privacidad" element={<Privacidad />} />

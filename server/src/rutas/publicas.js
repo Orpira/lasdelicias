@@ -4,7 +4,8 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { query } from "../db.js";
 import { config } from "../config.js";
-import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, esquemaOpinion, tokenMesa, validar } from "../esquemas.js";
+import { esquemaNuevoPedido, esquemaLlamada, esquemaDispositivo, esquemaOpinion, esquemaInicioStreamMesa, esquemaConsultaHorario, tokenMesa, validar } from "../esquemas.js";
+import { estadoHorario } from "../horario.js";
 import {
 	cambiarDeMesa,
 	crearPedido,
@@ -12,9 +13,18 @@ import {
 	pedidosEnOtraMesa,
 	vistaPublica,
 } from "../pedidos-servicio.js";
-import { abrirSSE, suscribirSeguimiento } from "../eventos.js";
+import { abrirSSE, suscribirMesa, suscribirSeguimiento } from "../eventos.js";
+import { cuentaAbiertaDeMesa, obtenerCuenta } from "../cuentas.js";
+import { ErrorOperacion } from "../errores.js";
 
 const TIPOS_IMAGEN = { ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
+
+async function mesaDelQr(token) {
+	if (!tokenMesa(token)) throw new ErrorOperacion("Mesa no encontrada", 404);
+	const { rows: [mesa] } = await query("SELECT numero, nombre FROM mesas WHERE token = $1 AND activa", [token]);
+	if (!mesa) throw new ErrorOperacion("Este QR ya no es válido. Pide ayuda al personal.", 404);
+	return mesa;
+}
 
 export default async function rutasPublicas(app) {
 	app.get("/productos", async () => {
@@ -35,15 +45,63 @@ export default async function rutasPublicas(app) {
 		return { ...rows[0]?.datos, actualizado: rows[0]?.updated_at };
 	});
 
+	app.get("/horario/estado", async (request, reply) => {
+		const { recogida } = validar(esquemaConsultaHorario, request.query);
+		const { rows: [negocio] } = await query("SELECT datos, clock_timestamp() AS instante FROM negocio WHERE id = 1");
+		if (!negocio) throw new ErrorOperacion("No existe la ficha del negocio para consultar su horario", 500);
+		const { horario, dias_cerrado = [] } = negocio.datos;
+		reply.header("Cache-Control", "no-store");
+		return estadoHorario(horario, dias_cerrado, negocio.instante, { conRecogida: recogida === "true" });
+	});
+
 	// Destino del QR: /mesas/qr/<token>?dispositivo=<id>
 	// Devuelve la mesa y, si este móvil tiene pedidos en curso en otra mesa, cuáles son
-	app.get("/mesas/qr/:token", async (request, reply) => {
-		if (!tokenMesa(request.params.token)) return reply.code(404).send({ error: "Mesa no encontrada" });
-		const { rows } = await query("SELECT numero, nombre FROM mesas WHERE token = $1 AND activa", [request.params.token]);
-		if (!rows[0]) return reply.code(404).send({ error: "Este QR ya no es válido. Pide ayuda al personal." });
+	app.get("/mesas/qr/:token", async (request) => {
+		const mesa = await mesaDelQr(request.params.token);
 		const dispositivo = String(request.query.dispositivo ?? "");
-		const enOtraMesa = /^[a-zA-Z0-9-]{8,64}$/.test(dispositivo) ? await pedidosEnOtraMesa(dispositivo, rows[0].numero) : [];
-		return { ...rows[0], pedidos_en_otra_mesa: enOtraMesa };
+		const enOtraMesa = /^[a-zA-Z0-9-]{8,64}$/.test(dispositivo) ? await pedidosEnOtraMesa(dispositivo, mesa.numero) : [];
+		return { ...mesa, pedidos_en_otra_mesa: enOtraMesa };
+	});
+
+	app.get("/mesas/qr/:token/cuenta", async (request, reply) => {
+		const mesa = await mesaDelQr(request.params.token);
+		reply.header("Cache-Control", "no-store");
+		return cuentaAbiertaDeMesa(mesa.numero);
+	});
+
+	app.get("/cuentas/:id/resumen", async (request, reply) => {
+		const cuenta = await obtenerCuenta(request.params.id, { soloCobradaReciente: true });
+		if (!cuenta) return reply.code(404).send({ error: "Este resumen no está disponible o ha caducado" });
+		reply.header("Cache-Control", "no-store");
+		return cuenta;
+	});
+
+	app.get("/mesas/qr/:token/stream", async (request, reply) => {
+		const mesa = await mesaDelQr(request.params.token);
+		const { desde, cuenta: cuentaPropia } = validar(esquemaInicioStreamMesa, request.query);
+		const raw = abrirSSE(request, reply);
+		suscribirMesa(mesa.numero, request.params.token, raw);
+		try {
+			if (desde) {
+				const { rows: cierres } = await query(
+					`SELECT id, mesa_numero, estado, cerrada_at, total, metodo_pago
+					 FROM cuentas WHERE mesa_numero = $1 AND estado IN ('cobrada','anulada')
+					 AND cerrada_at >= GREATEST($2::timestamptz, now() - interval '12 hours')
+					 ORDER BY (id = $3::bigint) DESC NULLS LAST, cerrada_at, id`,
+					[mesa.numero, desde, cuentaPropia ?? null],
+				);
+				for (const cierre of cierres) {
+					raw.write(`event: cuenta\ndata: ${JSON.stringify({
+						...cierre, mesa_nombre: mesa.nombre, tipo: `cuenta.${cierre.estado}`,
+					})}\n\n`);
+				}
+			}
+			const cuenta = await cuentaAbiertaDeMesa(mesa.numero);
+			if (cuenta) raw.write(`event: cuenta\ndata: ${JSON.stringify({ ...cuenta, tipo: "cuenta.actualizada" })}\n\n`);
+		} catch (error) {
+			request.log.error(error, "No se pudo enviar el estado inicial de la cuenta");
+			raw.end();
+		}
 	});
 
 	// El cliente confirma que se ha cambiado a esta mesa
@@ -51,12 +109,10 @@ export default async function rutasPublicas(app) {
 		"/mesas/qr/:token/cambio",
 		{ config: { rateLimit: { max: 30, timeWindow: "10 minutes" } } },
 		async (request, reply) => {
-			if (!tokenMesa(request.params.token)) return reply.code(404).send({ error: "Mesa no encontrada" });
 			const { dispositivo } = validar(esquemaDispositivo, request.body);
-			const { rows } = await query("SELECT numero FROM mesas WHERE token = $1 AND activa", [request.params.token]);
-			if (!rows[0]) return reply.code(404).send({ error: "Este QR ya no es válido" });
-			const movidos = await cambiarDeMesa(dispositivo, rows[0].numero);
-			return { mesa: rows[0].numero, pedidos: movidos };
+			const mesa = await mesaDelQr(request.params.token);
+			const movidos = await cambiarDeMesa(dispositivo, mesa.numero);
+			return { mesa: mesa.numero, ...movidos };
 		},
 	);
 
@@ -149,11 +205,9 @@ export default async function rutasPublicas(app) {
 		"/mesas/qr/:token/llamar",
 		{ config: { rateLimit: { max: 30, timeWindow: "5 minutes" } } },
 		async (request, reply) => {
-			if (!tokenMesa(request.params.token)) return reply.code(404).send({ error: "Mesa no encontrada" });
 			const { motivo } = validar(esquemaLlamada, request.body);
-			const { rows: mesa } = await query("SELECT numero FROM mesas WHERE token = $1 AND activa", [request.params.token]);
-			if (!mesa[0]) return reply.code(404).send({ error: "Este QR ya no es válido. Vuelve a escanearlo." });
-			const numero = mesa[0].numero;
+			const mesa = await mesaDelQr(request.params.token);
+			const numero = mesa.numero;
 			// Si ya hay una llamada pendiente de esa mesa por el mismo motivo, no se duplica
 			const { rows: pendiente } = await query(
 				"SELECT id FROM llamadas_mesa WHERE mesa_numero = $1 AND motivo = $2 AND NOT atendida",

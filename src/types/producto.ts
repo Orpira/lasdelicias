@@ -30,6 +30,8 @@ export const CATEGORIAS: { nombre: Categoria; emoji: string }[] = [
 ];
 
 export type EstadoPedido = "nuevo" | "preparando" | "listo" | "entregado" | "cancelado";
+export type MetodoPago = "efectivo" | "tarjeta" | "bizum" | "otro";
+export type EstadoCuenta = "abierta" | "cobrada" | "anulada";
 
 export interface LineaPedido {
 	producto_id: string | null;
@@ -52,12 +54,65 @@ export interface Pedido {
 	mesa_anterior: number | null;
 	cambio_mesa: "declarado" | "detectado" | null;
 	hora_recogida: string | null;
+	fuera_horario: boolean;
+	atender_desde: string | null;
 	notas: string;
 	estado: EstadoPedido;
 	total: number;
 	created_at: string;
 	updated_at: string;
+	cuenta_id: string | null;
+	pagado_at: string | null;
+	metodo_pago: MetodoPago | null;
 	items: LineaPedido[];
+}
+
+export interface PedidoCuenta {
+	numero_dia: number;
+	estado: EstadoPedido;
+	total: number;
+	pagado_at: string | null;
+	items: Pick<LineaPedido, "nombre" | "cantidad" | "precio_unitario">[];
+}
+
+export interface Cuenta {
+	id: string;
+	mesa_numero: number;
+	mesa_nombre: string | null;
+	estado: EstadoCuenta;
+	abierta_at: string;
+	cerrada_at: string | null;
+	total: number;
+	metodo_pago: MetodoPago | null;
+	numero_pedidos: number;
+	pedidos_sin_entregar: number;
+	minutos_abierta: number;
+	de_dias_anteriores?: boolean;
+}
+
+export interface CuentaDetalle extends Cuenta {
+	pedidos: PedidoCuenta[];
+}
+
+export interface EventoCuenta {
+	tipo: "cuenta.actualizada" | "cuenta.cobrada" | "cuenta.anulada";
+	id: string;
+	mesa_numero: number;
+	mesa_nombre?: string | null;
+	estado: EstadoCuenta;
+	total: number;
+	metodo_pago: MetodoPago | null;
+	cerrada_at: string | null;
+}
+
+export interface PedidoPendienteCobro extends Pick<Pedido, "codigo" | "numero_dia" | "nombre_cliente" | "tipo" | "estado" | "total" | "created_at" | "pagado_at" | "metodo_pago"> {
+	id: string;
+}
+
+export interface PendientesCobro {
+	pedidos: PedidoPendienteCobro[];
+	cuentas: Cuenta[];
+	total: number;
 }
 
 export interface LlamadaMesa {

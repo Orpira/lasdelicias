@@ -1,11 +1,16 @@
 import { randomBytes } from "node:crypto";
 import { query, transaccion } from "./db.js";
 import { config } from "./config.js";
+import { asegurarCuentaAbierta, bloquearCuentas } from "./cuentas.js";
+import { ErrorOperacion as ErrorPedido } from "./errores.js";
+import { descripcionHorario, dentroDeHorario, estaAbierto, fechaMadrid, siguienteApertura } from "./horario.js";
+
+export { ErrorOperacion as ErrorPedido } from "./errores.js";
 
 const SELECT_PEDIDO = `
 	SELECT p.id, p.codigo, p.fecha::text AS fecha, p.numero_dia, p.nombre_cliente, p.telefono,
 	       p.tipo, p.mesa_numero, m.nombre AS mesa_nombre, p.mesa_anterior, p.cambio_mesa, p.hora_recogida, p.notas, p.estado, p.total,
-	       p.created_at, p.updated_at,
+	       p.created_at, p.updated_at, p.cuenta_id, p.pagado_at, p.metodo_pago, p.fuera_horario, p.atender_desde,
 	       COALESCE(json_agg(json_build_object(
 	           'producto_id', i.producto_id, 'nombre', i.nombre, 'categoria', pr.categoria,
 	           'precio_unitario', i.precio_unitario, 'cantidad', i.cantidad
@@ -25,11 +30,11 @@ export async function obtenerPedidoPorCodigo(codigo) {
 	return rows[0] ?? null;
 }
 
-/** Pedidos de hoy que siguen en curso + los cerrados en las últimas 2 horas. */
+/** Pedidos recientes y los programados para aperturas futuras. */
 export async function pedidosDelPanel() {
 	const { rows } = await query(
 		`${SELECT_PEDIDO}
-		 WHERE p.fecha >= (now() AT TIME ZONE $1)::date - 1
+		 WHERE (p.fecha >= (now() AT TIME ZONE $1)::date - 1 OR p.atender_desde > now())
 		   AND (p.estado IN ('nuevo','preparando','listo') OR p.updated_at > now() - interval '2 hours')
 		 GROUP BY p.id, m.nombre
 		 ORDER BY p.created_at`,
@@ -52,13 +57,6 @@ function codigoPublico() {
 	return Array.from(bytes, (b) => alfabeto[b % alfabeto.length]).join("");
 }
 
-export class ErrorPedido extends Error {
-	constructor(mensaje, status = 400) {
-		super(mensaje);
-		this.statusCode = status;
-	}
-}
-
 /**
  * Crea un pedido. Los precios SIEMPRE se toman de la base de datos,
  * nunca de lo que envíe el cliente.
@@ -74,6 +72,28 @@ export async function crearPedido({ items, nombre, telefono, tipo, mesaToken, di
 	}
 
 	return transaccion(async (client) => {
+		await bloquearCuentas(client);
+		const { rows: [negocio] } = await client.query("SELECT datos, clock_timestamp() AS instante FROM negocio WHERE id = 1 FOR SHARE");
+		if (!negocio) throw new ErrorPedido("No existe la ficha del negocio para consultar su horario", 500);
+		const { horario, dias_cerrado = [] } = negocio.datos;
+		const instante = negocio.instante;
+		const abierto = estaAbierto(horario, dias_cerrado, instante);
+		if (!abierto && tipo === "mesa") {
+			throw new ErrorPedido("El local está cerrado ahora mismo. Puedes hacer tu pedido para recoger y lo prepararemos en cuanto abramos.", 409);
+		}
+		const apertura = abierto ? null : siguienteApertura(horario, dias_cerrado, instante);
+		if (!abierto && !apertura) {
+			throw new ErrorPedido("Ahora mismo no tenemos horario de apertura previsto. Llámanos para hacer tu pedido.", 409);
+		}
+		const fechaPedido = apertura?.fecha ?? fechaMadrid(instante);
+		if (horaRecogida) {
+			const recogida = new Date(horaRecogida);
+			if (!Number.isFinite(recogida.getTime())) throw new ErrorPedido("La hora de recogida no es válida", 400);
+			if (!dentroDeHorario(horario, dias_cerrado, recogida)
+				|| recogida.getTime() < (apertura?.inicio.getTime() ?? instante.getTime() - 5 * 60_000)) {
+				throw new ErrorPedido(`Elige una hora de recogida dentro del horario y no anterior al comienzo de la preparación. ${descripcionHorario(horario, dias_cerrado, recogida)}`, 400);
+			}
+		}
 		const ids = [...cantidades.keys()];
 		const { rows: productos } = await client.query(
 			"SELECT id, nombre, precio, disponible, activo, stock FROM productos WHERE id = ANY($1::uuid[]) FOR UPDATE",
@@ -92,20 +112,24 @@ export async function crearPedido({ items, nombre, telefono, tipo, mesaToken, di
 		// La mesa sale del token secreto del QR, nunca de un número enviado por el cliente
 		let mesa = null;
 		let mesaAnterior = null;
+		let cuentaId = null;
 		if (tipo === "mesa") {
 			const { rows } = await client.query("SELECT numero FROM mesas WHERE token = $1 AND activa", [mesaToken]);
 			if (rows.length === 0) {
 				throw new ErrorPedido("El código de esta mesa ya no es válido. Vuelve a escanear el QR de tu mesa.", 409);
 			}
 			mesa = rows[0].numero;
+			cuentaId = await asegurarCuentaAbierta(client, mesa);
 			// ¿Este móvil tiene pedidos en curso hoy en OTRA mesa? → posible cambio de mesa
 			if (dispositivo) {
 				const { rows: previos } = await client.query(
-					`SELECT mesa_numero FROM pedidos
-					 WHERE dispositivo = $1 AND tipo = 'mesa' AND mesa_numero <> $2
-					   AND estado IN ('nuevo','preparando','listo')
-					   AND fecha = (now() AT TIME ZONE $3)::date
-					 ORDER BY created_at DESC LIMIT 1`,
+					`SELECT p.mesa_numero FROM pedidos p
+					 LEFT JOIN cuentas c ON c.id = p.cuenta_id
+					 WHERE p.dispositivo = $1 AND p.tipo = 'mesa' AND p.mesa_numero <> $2
+					   AND p.estado IN ('nuevo','preparando','listo') AND p.pagado_at IS NULL
+					   AND (c.estado = 'abierta' OR p.cuenta_id IS NULL)
+					   AND p.fecha = (now() AT TIME ZONE $3)::date
+					 ORDER BY p.created_at DESC LIMIT 1`,
 					[dispositivo, mesa, config.zonaHoraria],
 				);
 				mesaAnterior = previos[0]?.mesa_numero ?? null;
@@ -117,10 +141,10 @@ export async function crearPedido({ items, nombre, telefono, tipo, mesaToken, di
 		// Número correlativo del día, sin carreras entre pedidos simultáneos
 		await client.query("SELECT pg_advisory_xact_lock(727002)");
 		const { rows: [dia] } = await client.query(
-			`SELECT (now() AT TIME ZONE $1)::date AS fecha,
+			`SELECT $1::date::text AS fecha,
 			        COALESCE((SELECT max(numero_dia) FROM pedidos
-			                  WHERE fecha = (now() AT TIME ZONE $1)::date), 0) + 1 AS numero`,
-			[config.zonaHoraria],
+			                  WHERE fecha = $1::date), 0) + 1 AS numero`,
+			[fechaPedido],
 		);
 
 		let clienteId = null;
@@ -137,13 +161,13 @@ export async function crearPedido({ items, nombre, telefono, tipo, mesaToken, di
 		const { rows: [pedido] } = await client.query(
 			`INSERT INTO pedidos (codigo, fecha, numero_dia, cliente_id, nombre_cliente, telefono,
 			                      tipo, mesa_numero, hora_recogida, notas, total,
-			                      dispositivo, mesa_anterior, cambio_mesa)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, round($11::numeric, 2), $12, $13, $14)
+			                      dispositivo, mesa_anterior, cambio_mesa, cuenta_id, fuera_horario, atender_desde)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, round($11::numeric, 2), $12, $13, $14, $15, $16, $17)
 			 RETURNING id`,
 			[
 				codigoPublico(), dia.fecha, dia.numero, clienteId, nombre, telefono ?? "",
 				tipo, mesa, horaRecogida ?? null, notas ?? "", total,
-				dispositivo ?? null, mesaAnterior, mesaAnterior ? "detectado" : null,
+				dispositivo ?? null, mesaAnterior, mesaAnterior ? "detectado" : null, cuentaId, !abierto, apertura?.inicio ?? null,
 			],
 		);
 
@@ -176,8 +200,13 @@ const TRANSICIONES = {
 
 export async function cambiarEstado(id, estado) {
 	return transaccion(async (client) => {
-		const { rows } = await client.query("SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE", [id]);
+		await bloquearCuentas(client);
+		const { rows } = await client.query("SELECT estado, pagado_at, atender_desde FROM pedidos WHERE id = $1 FOR UPDATE", [id]);
 		if (rows.length === 0) throw new ErrorPedido("Pedido no encontrado", 404);
+		if (rows[0].pagado_at) throw new ErrorPedido("Un pedido cobrado no se puede modificar", 409);
+		if (estado !== "cancelado" && rows[0].atender_desde?.getTime() > Date.now()) {
+			throw new ErrorPedido("Este pedido está programado para la apertura. Todavía no puede empezar a prepararse.", 409);
+		}
 		const actual = rows[0].estado;
 		if (!TRANSICIONES[actual].includes(estado)) {
 			throw new ErrorPedido(`No se puede pasar de "${actual}" a "${estado}"`, 409);
@@ -203,8 +232,10 @@ export async function pedidosEnOtraMesa(dispositivo, mesa) {
 		`SELECT p.codigo, p.numero_dia, p.mesa_numero, m.nombre AS mesa_nombre
 		 FROM pedidos p
 		 LEFT JOIN mesas m ON m.numero = p.mesa_numero
+		 LEFT JOIN cuentas c ON c.id = p.cuenta_id
 		 WHERE p.dispositivo = $1 AND p.tipo = 'mesa' AND p.mesa_numero <> $2
-		   AND p.estado IN ('nuevo','preparando','listo')
+		   AND p.estado IN ('nuevo','preparando','listo') AND p.pagado_at IS NULL
+		   AND (c.estado = 'abierta' OR p.cuenta_id IS NULL)
 		   AND p.fecha = (now() AT TIME ZONE $3)::date
 		 ORDER BY p.created_at`,
 		[dispositivo, mesa, config.zonaHoraria],
@@ -214,13 +245,24 @@ export async function pedidosEnOtraMesa(dispositivo, mesa) {
 
 /** El cliente declara que se ha cambiado de mesa: sus pedidos en curso pasan a la nueva. */
 export async function cambiarDeMesa(dispositivo, mesaNueva) {
-	const { rows } = await query(
-		`UPDATE pedidos SET mesa_anterior = mesa_numero, mesa_numero = $2, cambio_mesa = 'declarado'
-		 WHERE dispositivo = $1 AND tipo = 'mesa' AND mesa_numero <> $2
-		   AND estado IN ('nuevo','preparando','listo')
-		   AND fecha = (now() AT TIME ZONE $3)::date
-		 RETURNING numero_dia`,
-		[dispositivo, mesaNueva, config.zonaHoraria],
-	);
-	return rows.map((r) => r.numero_dia);
+	return transaccion(async (conexion) => {
+		await bloquearCuentas(conexion);
+		const { rows: anteriores } = await conexion.query(
+			`SELECT p.id FROM pedidos p LEFT JOIN cuentas c ON c.id = p.cuenta_id
+			 WHERE p.dispositivo = $1 AND p.tipo = 'mesa' AND p.mesa_numero <> $2
+			 AND p.estado IN ('nuevo','preparando','listo') AND p.pagado_at IS NULL
+			 AND (c.estado = 'abierta' OR p.cuenta_id IS NULL)
+			 AND p.fecha = (now() AT TIME ZONE $3)::date ORDER BY p.id FOR UPDATE OF p`,
+			[dispositivo, mesaNueva, config.zonaHoraria],
+		);
+		if (!anteriores.length) return { pedidos: [], cuenta_id: null, pedidos_movidos: [] };
+		const cuentaId = await asegurarCuentaAbierta(conexion, mesaNueva);
+		const { rows } = await conexion.query(
+			`UPDATE pedidos SET mesa_anterior = mesa_numero, mesa_numero = $2,
+				cambio_mesa = 'declarado', cuenta_id = $3
+			 WHERE id = ANY($1::uuid[]) RETURNING codigo, numero_dia, cuenta_id, created_at`,
+			[anteriores.map((pedido) => pedido.id), mesaNueva, cuentaId],
+		);
+		return { pedidos: rows.map((pedido) => pedido.numero_dia), cuenta_id: cuentaId, pedidos_movidos: rows };
+	});
 }

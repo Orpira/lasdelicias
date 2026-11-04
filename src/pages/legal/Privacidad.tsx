@@ -18,18 +18,18 @@ export default function Privacidad() {
 			<section>
 				<h2>2. Qué datos tratamos y para qué</h2>
 				<ul>
-					<li><strong>Pedidos:</strong> nombre, teléfono, productos, horario y notas que facilites, para preparar y entregar lo solicitado y avisarte cuando esté listo. En los pedidos para recoger, el aviso puede enviarse por WhatsApp al teléfono facilitado. El teléfono es opcional en los pedidos de mesa.</li>
+					<li><strong>Pedidos:</strong> nombre, teléfono, productos, horario y notas que facilites, para preparar y entregar lo solicitado y avisarte cuando esté listo. También se registran el importe, la fecha y el método del cobro realizado en el local. La app no procesa pagos ni recoge datos bancarios o de tarjetas. En los pedidos para recoger, el aviso puede enviarse por WhatsApp al teléfono facilitado. El teléfono es opcional en los pedidos de mesa.</li>
 					<li><strong>Mesas y dispositivo:</strong> número de mesa e identificador aleatorio del dispositivo, para entregar en la mesa correcta y detectar cambios de mesa. El identificador no contiene tu nombre ni teléfono por sí mismo, pero se asocia a tu pedido durante su conservación.</li>
 					<li><strong>Opiniones:</strong> nombre, valoración y comentario, para revisarlos y publicarlos si se aprueban. El único dato identificativo que se muestra es el nombre que elijas; también se muestran la valoración y el comentario aprobados, nunca el teléfono ni el código del pedido.</li>
-					<li><strong>Personal:</strong> nombre, email y credenciales de las cuentas autorizadas, para controlar el acceso al panel. Las contraseñas se almacenan mediante hash.</li>
+					<li><strong>Personal:</strong> nombre, email y credenciales de las cuentas autorizadas, para controlar el acceso al panel y registrar quién cobra o anula las cuentas de mesa. Las contraseñas se almacenan mediante hash.</li>
 				</ul>
 				<p>Recordar tu nombre y teléfono en el navegador es opcional. Solo se guardan para próximas visitas si marcas la casilla correspondiente al enviar el pedido. No marcarla no impide hacer pedidos.</p>
 			</section>
 			<section>
 				<h2>3. Base jurídica</h2>
 				<ul>
-					<li><strong>Ejecución del pedido solicitado</strong> (artículo 6.1.b del RGPD): preparar, entregar y comunicar el estado de tu pedido.</li>
-					<li><strong>Interés legítimo en la seguridad</strong> (artículo 6.1.f): evitar entregas en una mesa equivocada, gestionar cambios de mesa y proteger los accesos del personal.</li>
+					<li><strong>Ejecución del pedido solicitado</strong> (artículo 6.1.b del RGPD): preparar, entregar y comunicar el estado de tu pedido y registrar su cobro en el local.</li>
+					<li><strong>Interés legítimo en la seguridad</strong> (artículo 6.1.f): evitar entregas en una mesa equivocada, gestionar cambios de mesa, proteger los accesos del personal y mantener la trazabilidad de los cierres de cuenta.</li>
 					<li><strong>Consentimiento</strong> (artículo 6.1.a): publicar la opinión que envías voluntariamente y recordar tus datos cuando lo solicitas. Puedes retirar tu consentimiento, sin que afecte a la licitud del tratamiento anterior.</li>
 				</ul>
 			</section>

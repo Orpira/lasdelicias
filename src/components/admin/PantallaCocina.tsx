@@ -5,6 +5,7 @@ import { hora } from "../../lib/api";
 import { minutosDesde, porLlegada, useAhora, usePantallaEncendida, usePedidosEnVivo } from "../../lib/pedidosEnVivo";
 import type { Categoria, LineaPedido, Pedido } from "../../types/producto";
 import { etiquetaMesa } from "../../lib/mesa";
+import { estaProgramado } from "../../lib/programados";
 
 type Puesto = "todo" | "cocina" | "barra" | "pasteleria";
 
@@ -40,8 +41,8 @@ function colorTiempo(min: number) {
 }
 
 export default function PantallaCocina({ alCaducar }: { alCaducar: () => void }) {
-	const { pedidos, conectado, error, setError, mover } = usePedidosEnVivo(alCaducar);
 	const ahora = useAhora(15_000);
+	const { pedidos, conectado, error, setError, mover } = usePedidosEnVivo(alCaducar, false, ahora);
 	usePantallaEncendida();
 
 	const [puesto, setPuesto] = useState<Puesto>(() => leer<Puesto>(CLAVE_PUESTO, "todo"));
@@ -58,12 +59,12 @@ export default function PantallaCocina({ alCaducar }: { alCaducar: () => void })
 	const comandas = useMemo(
 		() =>
 			pedidos
-				.filter((p) => p.estado === "nuevo" || p.estado === "preparando")
+				.filter((p) => (p.estado === "nuevo" || p.estado === "preparando") && !estaProgramado(p, ahora))
 				.map((p) => ({ pedido: p, lineas: p.items.map((it, i) => ({ it, i })).filter(({ it }) => deEstePuesto(it)) }))
 				.filter((c) => c.lineas.length > 0)
 				.sort((a, b) => porLlegada(a.pedido, b.pedido)),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[pedidos, puesto],
+		[pedidos, puesto, ahora],
 	);
 
 	// Resumen de producción: cuánto hay que preparar de cada cosa (sin lo ya tachado)
@@ -137,20 +138,21 @@ export default function PantallaCocina({ alCaducar }: { alCaducar: () => void })
 			) : (
 				<div className="flex-1 flex gap-3 overflow-x-auto pb-2 snap-x">
 					{comandas.map(({ pedido, lineas }, pos) => {
-						const min = minutosDesde(pedido.created_at, ahora);
+						const min = minutosDesde(pedido.atender_desde ?? pedido.created_at, ahora);
 						const todasHechas = lineas.every(({ i }) => hechos[`${pedido.id}:${i}`]);
 						return (
-							<article key={pedido.id} className="snap-start shrink-0 w-72 bg-white text-gray-900 rounded-xl flex flex-col overflow-hidden">
-								<header className={`${colorTiempo(min)} text-white px-3 py-2 flex items-center justify-between`}>
+							<article key={pedido.id} className="animacion-estado-pedido snap-start shrink-0 w-72 bg-white text-gray-900 rounded-xl flex flex-col overflow-hidden">
+								<header className={`${pedido.estado === "nuevo" ? "bg-red-600" : "bg-orange-700"} text-white px-3 py-2 flex items-center justify-between transition-colors duration-500`}>
 									<span className="text-sm font-bold opacity-90">{pos + 1}.º</span>
-									<span className="text-3xl font-black">#{pedido.numero_dia}</span>
-									<span className="text-lg font-bold tabular-nums">{min}′</span>
+									<span className="text-center"><span className="block text-xs font-bold">{pedido.estado === "nuevo" ? "Recibido" : "Preparando"}</span><span className="text-3xl font-black">#{pedido.numero_dia}</span></span>
+									<span className={`${colorTiempo(min)} rounded px-2 py-1 text-lg font-bold tabular-nums`} aria-label={`${min} minutos de espera`}>{min}′</span>
 								</header>
 								<div className="px-3 py-2 border-b text-lg font-bold">
 									{pedido.tipo === "mesa" && pedido.mesa_numero !== null && `🪑 ${etiquetaMesa(pedido.mesa_numero, pedido.mesa_nombre, { conNumero: true })}`}
 									{pedido.tipo === "recoger" && `🛍️ Llevar${pedido.hora_recogida ? ` · ${hora(pedido.hora_recogida)}` : ""}`}
 									{pedido.tipo === "whatsapp" && `💬 WhatsApp${pedido.hora_recogida ? ` · ${hora(pedido.hora_recogida)}` : ""}`}
 									<span className="block text-sm font-normal text-gray-500">{pedido.nombre_cliente} · llegó {hora(pedido.created_at)}</span>
+									{pedido.fuera_horario && <span className="block text-sm font-semibold text-delicias">🌙 Recibido fuera de horario</span>}
 								</div>
 								<ul className="flex-1 divide-y">
 									{lineas.map(({ it, i }) => {

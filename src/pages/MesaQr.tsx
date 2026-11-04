@@ -17,7 +17,7 @@ interface RespuestaMesa {
 
 export default function MesaQr() {
 	const { token = "" } = useParams();
-	const { fijarMesa } = useCarrito();
+	const { fijarMesa, registrarPedido } = useCarrito();
 	const [mesa, setMesa] = useState<RespuestaMesa | null>(null);
 	const [estado, setEstado] = useState<"comprobando" | "preguntar" | "listo" | "error">("comprobando");
 	const [error, setError] = useState("");
@@ -39,10 +39,14 @@ export default function MesaQr() {
 	async function confirmarCambio() {
 		setEnviando(true);
 		try {
-			await api(`/mesas/qr/${encodeURIComponent(token)}/cambio`, {
+			const cambio = await api<{
+				mesa: number;
+				pedidos_movidos: { codigo: string; cuenta_id: string; created_at: string }[];
+			}>(`/mesas/qr/${encodeURIComponent(token)}/cambio`, {
 				metodo: "POST",
 				cuerpo: { dispositivo: idDispositivo() },
 			});
+			for (const pedido of cambio.pedidos_movidos) registrarPedido({ ...pedido, mesa_numero: cambio.mesa });
 			setEstado("listo");
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "No se pudo avisar del cambio");

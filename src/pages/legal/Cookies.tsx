@@ -9,6 +9,11 @@ const ALMACENAMIENTO = [
 		duracion: "Sin caducidad automática. Las líneas se vacían al enviar el pedido; al cargar la app se descarta la mesa si han pasado 4 horas desde el escaneo.",
 	},
 	{
+		clave: "delicias.cuentas",
+		finalidad: "Relacionar las cuentas de mesa con los pedidos hechos desde este dispositivo para mostrar el cierre de la visita y su valoración.",
+		duracion: "12 horas desde el último pedido de cada cuenta. Se descartan las cuentas caducadas al cargar la app y mediante un temporizador mientras permanece abierta.",
+	},
+	{
 		clave: "delicias.dispositivo",
 		finalidad: "Identificador aleatorio para relacionar pedidos del dispositivo y detectar cambios de mesa.",
 		duracion: "Sin caducidad automática, hasta borrar el almacenamiento del sitio.",

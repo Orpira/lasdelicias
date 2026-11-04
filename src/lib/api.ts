@@ -30,7 +30,7 @@ export class ErrorApi extends Error {
 
 type Opciones = { metodo?: string; cuerpo?: unknown; auth?: boolean; formData?: FormData };
 
-export async function api<T>(ruta: string, { metodo = "GET", cuerpo, auth = false, formData }: Opciones = {}): Promise<T> {
+async function solicitar(ruta: string, { metodo = "GET", cuerpo, auth = false, formData }: Opciones = {}): Promise<Response> {
 	const cabeceras: Record<string, string> = {};
 	if (cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
 	if (auth) {
@@ -47,13 +47,23 @@ export async function api<T>(ruta: string, { metodo = "GET", cuerpo, auth = fals
 	} catch {
 		throw new ErrorApi("No hay conexión con el servidor. Inténtalo de nuevo.", 0);
 	}
-	if (res.status === 204) return undefined as T;
-	const datos = await res.json().catch(() => ({}));
 	if (!res.ok) {
+		const datos = await res.json().catch(() => ({}));
 		if (res.status === 401 && auth) guardarToken(null);
 		throw new ErrorApi(datos.error ?? `Error ${res.status}`, res.status);
 	}
+	return res;
+}
+
+export async function api<T>(ruta: string, opciones: Opciones = {}): Promise<T> {
+	const res = await solicitar(ruta, opciones);
+	if (res.status === 204) return undefined as T;
+	const datos = await res.json().catch(() => ({}));
 	return datos as T;
+}
+
+export async function apiArchivo(ruta: string, opciones: Opciones = {}): Promise<Blob> {
+	return (await solicitar(ruta, opciones)).blob();
 }
 
 /**
@@ -76,6 +86,7 @@ export function escuchar(
 				const token = auth ? leerToken() : null;
 				if (token) cabeceras.Authorization = `Bearer ${token}`;
 				const res = await fetch(`${API_URL}${ruta}`, { headers: cabeceras, signal: control.signal });
+				if (!activo) return;
 				if (res.status === 401) {
 					guardarToken(null);
 					alCambiarConexion?.(false);
@@ -88,7 +99,7 @@ export function escuchar(
 				let bufer = "";
 				for (;;) {
 					const { value, done } = await lector.read();
-					if (done) break;
+					if (done || !activo) break;
 					bufer += value;
 					let corte: number;
 					while ((corte = bufer.indexOf("\n\n")) !== -1) {
@@ -101,17 +112,22 @@ export function escuchar(
 							else if (linea.startsWith("data: ")) datos += linea.slice(6);
 						}
 						if (datos) {
+							let contenido: unknown;
 							try {
-								alRecibir(evento, JSON.parse(datos));
-							} catch {
-								/* bloque no válido: se ignora */
+								contenido = JSON.parse(datos);
+							} catch (error) {
+								console.warn("Se recibió un mensaje en directo con JSON no válido", error);
+								continue;
 							}
+							alRecibir(evento, contenido);
 						}
 					}
 				}
-			} catch {
+			} catch (error) {
 				if (!activo) return;
+				console.warn("Se interrumpió la conexión en directo; se intentará de nuevo", error);
 			}
+			if (!activo) return;
 			alCambiarConexion?.(false);
 			if (activo) await new Promise((r) => setTimeout(r, 3000));
 		}

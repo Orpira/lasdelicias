@@ -2,7 +2,8 @@
 // Se autentican con la cabecera X-Api-Key = N8N_API_KEY.
 import { timingSafeEqual } from "node:crypto";
 import { config } from "../config.js";
-import { esquemaEstado, esquemaPedidoN8n, esquemaStockExterno, validar } from "../esquemas.js";
+import { esquemaEstado, esquemaGuardarCierre, esquemaPedidoN8n, esquemaStockExterno, validar } from "../esquemas.js";
+import { consultarCierre, guardarCierre } from "../cierres.js";
 import { aplicarStockExterno } from "../tpv/index.js";
 import { cambiarEstado, crearPedido, obtenerPedidoPorCodigo } from "../pedidos-servicio.js";
 
@@ -50,5 +51,16 @@ export default async function rutasN8n(app) {
 	app.patch("/n8n/pedidos/:id", async (request) => {
 		const { estado } = validar(esquemaEstado, request.body);
 		return cambiarEstado(request.params.id, estado);
+	});
+
+	app.get("/n8n/cierres/:fecha", async (request, reply) => {
+		reply.header("Cache-Control", "no-store");
+		return consultarCierre(request.params.fecha, request.query);
+	});
+
+	app.post("/n8n/cierres", async (request, reply) => {
+		const { fecha, forzar } = validar(esquemaGuardarCierre, request.body);
+		const datos = await guardarCierre(fecha, { origen: "n8n", forzar });
+		return reply.code(datos.creado ? 201 : 200).send(datos);
 	});
 }

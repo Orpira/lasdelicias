@@ -5,6 +5,7 @@ import { euros } from "../lib/api";
 import { useCarrito } from "../lib/carrito";
 import { useProductos } from "../lib/productos";
 import { etiquetaMesa } from "../lib/mesa";
+import { useEstadoHorario } from "../lib/horario";
 import { CATEGORIAS, type Categoria, type Producto } from "../types/producto";
 import BarraMesa from "./BarraMesa";
 
@@ -12,6 +13,7 @@ const esCategoria = (c: string | null): c is Categoria => CATEGORIAS.some((x) =>
 
 export default function Menu() {
 	const { productos, error } = useProductos();
+	const { estado, error: errorHorario, recargar: recargarHorario } = useEstadoHorario();
 	const [params, setParams] = useSearchParams();
 	const carrito = useCarrito();
 	const desdeUrl = params.get("categoria");
@@ -40,10 +42,12 @@ export default function Menu() {
 				<div className="max-w-6xl mx-auto px-5 pt-10 pb-6">
 					<h1 className="text-4xl sm:text-5xl font-extrabold tracking-titular">La carta</h1>
 					<p className="mt-2 text-lg text-tinta/70">
-						{carrito.mesa
+						{estado?.abierto === false ? "Puedes pedir para recoger: lo prepararemos en cuanto abramos." : carrito.mesa
 							? `Pide desde ${etiquetaMesa(carrito.mesa, carrito.mesaNombre)} y te lo llevamos.`
 							: "Elige lo que te apetezca: para tomar aquí o para recoger sin esperar."}
 					</p>
+					{estado && <p className="mt-3 font-semibold text-delicias">{estado.texto}</p>}
+					{errorHorario && <p role="alert" className="mt-3 text-sm text-red-700">No se pudo consultar el horario. <button onClick={recargarHorario} className="font-bold underline">Reintentar</button></p>}
 				</div>
 			</div>
 

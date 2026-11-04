@@ -7,6 +7,7 @@ import GestionCarta from "../components/admin/GestionCarta";
 import QrMesas from "../components/admin/QrMesas";
 import PantallaCocina from "../components/admin/PantallaCocina";
 import ModeracionOpiniones from "../components/admin/ModeracionOpiniones";
+import CierreDiario from "../components/admin/CierreDiario";
 
 export interface Usuario {
 	sub?: string;
@@ -15,8 +16,8 @@ export interface Usuario {
 	rol: "admin" | "barra";
 }
 
-// Cada pestaña tiene su dirección: /admin/barra, /admin/cocina, /admin/carta, /admin/mesas
-const PESTANAS = ["barra", "cocina", "carta", "mesas", "opiniones"] as const;
+// Cada pestaña tiene su dirección: /admin/barra, /admin/cocina, /admin/carta, /admin/mesas…
+const PESTANAS = ["barra", "cocina", "carta", "mesas", "opiniones", "cierres"] as const;
 type Pestana = (typeof PESTANAS)[number];
 const esPestana = (p: unknown): p is Pestana => PESTANAS.includes(p as Pestana);
 
@@ -70,6 +71,7 @@ export default function Admin() {
 		{ id: "cocina", texto: "👩‍🍳 Cocina" },
 		{ id: "carta", texto: "🥐 Carta" },
 		{ id: "mesas", texto: "🪑 QR de mesas" },
+		{ id: "cierres", texto: "📊 Cierre diario" },
 		...(usuario.rol === "admin" ? [{ id: "opiniones" as const, texto: "⭐ Opiniones" }] : []),
 	];
 
@@ -94,11 +96,12 @@ export default function Admin() {
 					<button onClick={salir} className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200">Salir</button>
 				</div>
 			</header>
-			{pestana === "barra" && <PanelPedidos alCaducar={salir} />}
+			{pestana === "barra" && <PanelPedidos alCaducar={salir} esAdmin={usuario.rol === "admin"} />}
 			{pestana === "cocina" && <PantallaCocina alCaducar={salir} />}
 			{pestana === "carta" && <GestionCarta esAdmin={usuario.rol === "admin"} />}
 			{pestana === "mesas" && <QrMesas esAdmin={usuario.rol === "admin"} />}
 			{pestana === "opiniones" && usuario.rol === "admin" && <ModeracionOpiniones />}
+			{pestana === "cierres" && <CierreDiario esAdmin={usuario.rol === "admin"} alCaducar={salir} />}
 		</div>
 	);
 }
