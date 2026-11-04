@@ -92,6 +92,21 @@ export const esquemaLogin = z.strictObject({
 	password: z.string().min(1).max(200),
 });
 
+export const esquemaStaffNuevo = z.strictObject({
+	email: z.email().transform((e) => e.toLowerCase()),
+	nombre: z.string().trim().min(1).max(100),
+	password: z.string().min(10).max(200),
+	rol: z.enum(["admin", "barra"]).default("barra"),
+});
+
+export const esquemaStaffCambio = z.strictObject({
+	email: z.email().transform((e) => e.toLowerCase()),
+	nombre: z.string().trim().min(1).max(100),
+	password: z.string().min(10).max(200).optional(),
+	rol: z.enum(["admin", "barra"]),
+	activo: z.boolean(),
+});
+
 export const esquemaProducto = z.object({
 	nombre: z.string().trim().min(1).max(80),
 	descripcion: z.string().trim().max(300).default(""),

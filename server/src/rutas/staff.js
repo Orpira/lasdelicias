@@ -16,6 +16,8 @@ import {
 	esquemaMesaNueva,
 	esquemaNegocio,
 	esquemaProducto,
+	esquemaStaffCambio,
+	esquemaStaffNuevo,
 	validar,
 } from "../esquemas.js";
 import { cambiarEstado, obtenerPedidoPorId, pedidosDelPanel } from "../pedidos-servicio.js";
@@ -176,6 +178,55 @@ export default async function rutasStaff(app) {
 				} catch (err) {
 					return reply.code(409).send({ error: err.message });
 				}
+			});
+
+			// Gestión temporal de cuentas del personal
+			admin.get("/admin/staff", async () => {
+				const { rows } = await query(
+					`SELECT id, email, nombre, rol, activo, created_at
+					 FROM staff ORDER BY activo DESC, nombre, email`,
+				);
+				return rows;
+			});
+
+			admin.post("/admin/staff", async (request, reply) => {
+				const datos = validar(esquemaStaffNuevo, request.body);
+				const passwordHash = await bcrypt.hash(datos.password, 12);
+				const { rows } = await query(
+					`INSERT INTO staff (email, nombre, password_hash, rol)
+					 VALUES ($1, $2, $3, $4)
+					 RETURNING id, email, nombre, rol, activo, created_at`,
+					[datos.email, datos.nombre, passwordHash, datos.rol],
+				);
+				return reply.code(201).send(rows[0]);
+			});
+
+			admin.put("/admin/staff/:id", async (request, reply) => {
+				const datos = validar(esquemaStaffCambio, request.body);
+				const parametros = [request.params.id, datos.email, datos.nombre, datos.rol, datos.activo];
+				const passwordSql = datos.password ? ", password_hash = $6" : "";
+				if (datos.password) parametros.push(await bcrypt.hash(datos.password, 12));
+				const { rows } = await query(
+					`UPDATE staff
+					 SET email = $2, nombre = $3, rol = $4, activo = $5${passwordSql}
+					 WHERE id = $1
+					 RETURNING id, email, nombre, rol, activo, created_at`,
+					parametros,
+				);
+				if (!rows[0]) return reply.code(404).send({ error: "Usuario no encontrado" });
+				return rows[0];
+			});
+
+			admin.delete("/admin/staff/:id", async (request, reply) => {
+				if (request.params.id === request.user.sub) {
+					return reply.code(400).send({ error: "No puedes desactivar tu propio usuario" });
+				}
+				const { rows } = await query(
+					"UPDATE staff SET activo = false WHERE id = $1 RETURNING id",
+					[request.params.id],
+				);
+				if (!rows[0]) return reply.code(404).send({ error: "Usuario no encontrado" });
+				return reply.code(204).send();
 			});
 
 			// Añadir una mesa (número libre siguiente si no se indica). Si existía desactivada, se reactiva.
