@@ -5,6 +5,7 @@ App de pedidos y atención en el local para Las Delicias (Calle Ayala, 28 · Má
 - **Clientes**: carta online, pedido desde la mesa con QR, encargo para recoger a una hora, seguimiento del pedido en directo, llamar al personal o pedir la cuenta desde la mesa.
 - **Mesas seguras**: cada QR lleva un código secreto (`/m/<código>`), así que nadie puede pedir "a otra mesa" cambiando un número en la URL. Si un móvil con un pedido en curso escanea otra mesa, se le pregunta si se ha cambiado; la barra ve el cambio declarado (🔄) o el sospechoso (⚠). Cada QR se puede regenerar desde el panel.
 - **Barra**: pedidos en tiempo real (nuevos → preparando → listos), avisos sonoros, llamadas de mesa, avisos de stock bajo.
+- **Cuentas y cobro**: una cuenta por visita de mesa, total en directo, métodos registrados por el personal y avisos de pendientes. La app no procesa pagos; el dinero se recibe en caja. Para llevar o WhatsApp se entregan y cobran con un toque.
 - **Cocina (tablet)**: comandas por orden de llegada, filtradas por puesto (cocina, barra, pastelería), platos que se tachan al tocarlos, tiempos en colores, resumen de producción y pantalla siempre encendida.
 - **Carta**: agotados con un toque, productos y fotos, stock de envasados, enlace con la caja (TPV), hoja de QR imprimible.
 - **Ecosistema**: los eventos (pedido creado, cambio de estado o de mesa, llamada de mesa, stock bajo) salen hacia **n8n**, que puede avisar por WhatsApp/Telegram, publicar en Instagram, atender pedidos por WhatsApp con IA o sincronizar el stock con la caja, usando la misma API.
@@ -18,6 +19,7 @@ Vercel ─ PWA React (este repo)                 Servidor Hetzner (docker compos
   /m/:código   destino del QR de cada mesa  ──► │    precios recalculados en servidor, SSE en directo
   /pedido      enviar pedido                    ├─ PostgreSQL 16 (LISTEN/NOTIFY → eventos)
   /pedido/:cod seguimiento en directo           ├─ backup diario (pg_dump, 14 días)
+  /gracias/:id resumen tras cobrar la mesa      │    disponible durante 24 horas, sin datos personales
   /admin       barra · cocina · carta · QR      ├─ n8n ◄── eventos firmados / ──► X-Api-Key
                                                 └─ caja (TPV) ──► stock de envasados (src/tpv/)
 ```
@@ -50,6 +52,16 @@ El nombre se edita en el panel de QR de mesas. Los clientes ven «Mesa 7» si co
 Las etiquetas se centralizan en `src/lib/mesa.ts`. El QR guarda también el nombre en el carrito; los carritos antiguos sin nombre siguen funcionando y muestran «Mesa N». Los pedidos y llamadas de la API incluyen `mesa_nombre`, también en los eventos SSE y de n8n, sin migraciones ni cambios de esquema.
 
 Pruebas de las etiquetas: `node --experimental-strip-types --test src/lib/mesa.test.js`.
+
+## Cuentas y cierre de la visita
+
+Los pedidos de una misma mesa comparten una cuenta abierta. En **Barra → Mesas abiertas** se consultan los artículos y se registra el cobro con el método elegido. Las entregas pendientes exigen confirmación; anular requiere rol de administración y motivo. Cambiar de mesa traslada los pedidos en curso, sin arrastrar visitas anuladas.
+
+Al cerrar, los móviles que pidieron se desvinculan y muestran el resumen, la valoración y las redes del negocio. Los demás solo se desvinculan. `delicias.cuentas` conserva la relación con los pedidos propios durante 12 horas; el resumen público cobrado está disponible 24 horas. Un seguimiento compartido no convierte un pedido en propio. Para llevar y WhatsApp se mantiene la alternativa **Entregado sin cobrar**, además de **Entregado y cobrado**.
+
+La migración incorpora solo pedidos de mesa en curso, nunca presume pagos históricos. La franja de pendientes permite revisar los pedidos entregados sin pagar y cuentas de días anteriores. Los estados de cocina se distinguen con rojo al recibir y naranja al empezar, transiciones suaves y respeto al movimiento reducido; el tiempo de espera conserva su aviso separado.
+
+Pruebas de integración: `npm --prefix server test`; con `DATABASE_URL_TEST` se ejecutan contra PostgreSQL dedicado y sin la variable se omiten explícitamente. Los métodos, eventos y códigos propios se comprueban con `node --experimental-strip-types --test src/lib/cuentas.test.js`. Consulta el [flujo de cuentas, eventos de n8n y pruebas](server/DESPLIEGUE.md#cuentas-y-registro-del-cobro).
 
 ## Privacidad y almacenamiento
 

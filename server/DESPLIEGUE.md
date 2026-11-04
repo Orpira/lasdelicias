@@ -3,6 +3,49 @@
 Servidor: 2 vCPU · 4 GB RAM · Ubuntu/Debian con Docker · IPv4 `167.233.139.93`.
 Consumo esperado: Postgres + API ≈ 150–250 MB de RAM; cabe holgado junto a n8n.
 
+## Cuentas y registro del cobro
+
+La app **no procesa pagos ni incorpora una pasarela**. El personal recibe el dinero en la caja del local y registra el cobro con **Efectivo**, **Tarjeta**, **Bizum** u **Otro**.
+
+- El primer pedido de una mesa abre una cuenta; los siguientes comparten esa cuenta hasta cerrarla. Hay como máximo una cuenta abierta por mesa, incluso con peticiones simultáneas.
+- En **Barra → Mesas abiertas**, cada ficha muestra mesa, total, número de pedidos, pedidos sin entregar y tiempo abierta. La llamada «pide la cuenta» abre el mismo detalle.
+- Elige el método para registrar el cobro. Si faltan entregas, debes confirmar expresamente que se marquen como entregadas. El cierre y los pagos se guardan en una única transacción; no se permite repetir el cobro.
+- Al cobrar se atienden las llamadas de cuenta, pero no las de atención. El dispositivo que pidió ve el agradecimiento, el resumen y la invitación a valorar; se vacían su carrito y su mesa. Quien solo escaneó el QR se desvincula sin redirección y conserva el carrito.
+- **Ver mi cuenta** permite al cliente consultar artículos, estados y total antes de pedir la cuenta. El siguiente pedido tras un cierre abre una visita nueva.
+- El cambio de mesa traslada los pedidos en curso del dispositivo a la cuenta de destino. Si la anterior queda sin pedidos, se anula con motivo `sin pedidos`. Cancelar un pedido lo excluye del total.
+- Solo administración puede **anular una cuenta**, con motivo obligatorio. No se registra ningún pago ni se recuperan esos pedidos como deuda de una visita nueva. El cierre anulado nunca muestra un agradecimiento por un pago.
+- Para llevar o WhatsApp: **Entregado y cobrado** registra ambos hechos con el método elegido. **Entregado sin cobrar** mantiene el cobro pendiente. El seguimiento ofrece el mismo agradecimiento y valoración cuando constan entrega y pago.
+- **Pendiente de cobro (N)** reúne los pedidos entregados sin pagar y las cuentas abiertas de días anteriores (fecha de Madrid), con acceso al cobro.
+
+La migración automática `007_cuentas_y_cobro.sql` incorpora a cuentas únicamente los pedidos de mesa en estado `nuevo`, `preparando` o `listo`. No agrupa los ya entregados ni inventa pagos históricos. Los pedidos para llevar entregados sin registro de pago quedan pendientes de revisión.
+
+El resumen público `GET /cuentas/:id/resumen` solo admite cuentas cobradas durante las últimas **24 horas**, sin nombres de clientes, teléfonos, códigos de seguimiento, dispositivo ni personal. El dispositivo guarda sus cuentas y códigos en `delicias.cuentas` durante **12 horas desde el último pedido de cada cuenta**, para reconocer su visita y permitir su valoración. Se recuperan también los cierres ocurridos mientras estaba desconectado. Los enlaces compartidos de seguimiento no acreditan que el dispositivo haya hecho el pedido.
+
+### Eventos de cuentas para n8n
+
+Continúan usando el webhook y la cabecera secreta existentes:
+
+| `tipo` | Cuándo | Contenido |
+|---|---|---|
+| `cuenta.actualizada` | Se añade, traslada o cancela un pedido; cambia el total | `id`, `mesa_numero`, `mesa_nombre`, `estado`, `total`, `metodo_pago`, `cerrada_at` |
+| `cuenta.cobrada` | El personal registra el cobro completo | Los mismos campos, con estado `cobrada`, total y método definitivos |
+| `cuenta.anulada` | Administración anula o la cuenta queda sin pedidos tras un traslado | Los mismos campos y `motivo_anulacion` |
+| `pedido.pagado` | Se registra un pago sin cambiar el estado del pedido | `pedido` completo; si también cambia el estado, se emite el habitual `pedido.estado` |
+
+Los campos de cuenta van **en la raíz del JSON**, junto a `tipo` y `enviado_en`, no dentro de `cuenta`. El SSE público usa el evento `cuenta`, con `tipo` en los datos, y nunca incluye el motivo libre de anulación. Los eventos del personal usan el mismo nombre `cuenta`.
+
+Idea de ampliación: Webhook → comprobar el secreto → Switch por `body.tipo = cuenta.anulada` → Telegram al dueño con la mesa, total y motivo. Se puede excluir `sin pedidos` para no avisar de los traslados normales. No se activa ninguna automatización nueva ni se envían avisos reales al desplegar esta función.
+
+### Pruebas de cuentas
+
+```bash
+# Sin esta variable, la suite se omite de forma explícita.
+cd server
+DATABASE_URL_TEST='postgres://usuario:clave-de-pruebas@localhost:5432/delicias_pruebas' npm test
+```
+
+Usa **una base PostgreSQL dedicada a pruebas**, nunca producción. La suite crea un esquema aleatorio, aplica las migraciones reales, comprueba concurrencia, cobro, cambios de mesa, cancelación, permisos, privacidad y recuperación SSE, y elimina su esquema al terminar. Desactiva las salidas a n8n y TPV. No requiere modificar ningún archivo de entorno.
+
 ## Instalación rápida (un comando)
 
 Con el DNS del paso 1 ya creado, en el servidor (con tu usuario; las variables van **después** de `sudo`):

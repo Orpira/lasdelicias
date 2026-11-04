@@ -11,7 +11,7 @@ export function PaginaLegal({ titulo, error, children }: { titulo: string; error
 			</Link>
 			<header className="mt-6 mb-8 border-b border-delicias/15 pb-6">
 				<h1 id="titulo-legal" className="text-4xl font-extrabold tracking-titular">{titulo}</h1>
-				<p className="mt-3 text-sm text-tinta/70">Última actualización: <time dateTime="2026-11-03">3 de noviembre de 2026</time></p>
+				<p className="mt-3 text-sm text-tinta/70">Última actualización: <time dateTime="2026-11-04">4 de noviembre de 2026</time></p>
 			</header>
 			{error && (
 				<div role="alert" className="mb-8 rounded-xl border border-delicias/25 bg-merengue p-4">

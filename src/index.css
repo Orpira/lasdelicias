@@ -46,11 +46,27 @@ select:focus-visible {
 	display: none;
 }
 
+@keyframes entrada-estado-pedido {
+	from {
+		opacity: 0.6;
+		transform: translateY(5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animacion-estado-pedido {
+	animation: entrada-estado-pedido 350ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,
 	*::after {
 		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 	}
 }

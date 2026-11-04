@@ -6,9 +6,11 @@ import pg from "pg";
 import { config } from "./config.js";
 import { obtenerPedidoPorId, vistaPublica } from "./pedidos-servicio.js";
 import { query } from "./db.js";
+import { obtenerCuenta } from "./cuentas.js";
 
 const clientesPanel = new Set(); // respuestas SSE del personal
 const clientesSeguimiento = new Map(); // codigo -> Set de respuestas SSE
+const clientesMesa = new Map(); // numero -> Set de conexiones autorizadas por su QR
 
 function enviarSSE(raw, evento, datos) {
 	raw.write(`event: ${evento}\ndata: ${JSON.stringify(datos)}\n\n`);
@@ -45,6 +47,17 @@ export function suscribirSeguimiento(codigo, raw) {
 	});
 }
 
+export function suscribirMesa(numero, token, raw) {
+	if (!clientesMesa.has(numero)) clientesMesa.set(numero, new Set());
+	const conexiones = clientesMesa.get(numero);
+	const conexion = { token, raw };
+	conexiones.add(conexion);
+	raw.on("close", () => {
+		conexiones.delete(conexion);
+		if (!conexiones.size) clientesMesa.delete(numero);
+	});
+}
+
 async function enviarAN8n(evento, log) {
 	if (!config.n8nWebhookUrl) return;
 	try {
@@ -72,6 +85,23 @@ async function procesar(aviso, log) {
 			enviarSSE(raw, "pedido", vistaPublica(pedido));
 		}
 		await enviarAN8n({ tipo: aviso.tipo, estado_anterior: aviso.estado_anterior, pedido }, log);
+	} else if (aviso.tipo.startsWith("cuenta.")) {
+		const [cuenta, { rows: [mesa] }] = await Promise.all([
+			obtenerCuenta(aviso.id),
+			query(
+				`SELECT m.token, m.activa, c.motivo_anulacion
+				 FROM cuentas c JOIN mesas m ON m.numero = c.mesa_numero WHERE c.id = $1`,
+				[aviso.id],
+			),
+		]);
+		if (!cuenta || !mesa) return;
+		const evento = { ...cuenta, tipo: aviso.tipo };
+		for (const raw of clientesPanel) enviarSSE(raw, "cuenta", evento);
+		for (const conexion of clientesMesa.get(cuenta.mesa_numero) ?? []) {
+			if (mesa.activa && conexion.token === mesa.token) enviarSSE(conexion.raw, "cuenta", evento);
+			else conexion.raw.end();
+		}
+		await enviarAN8n({ ...evento, motivo_anulacion: mesa.motivo_anulacion }, log);
 	} else if (aviso.tipo === "opinion.nueva") {
 		for (const raw of clientesPanel) enviarSSE(raw, "opinion", aviso);
 		await enviarAN8n(aviso, log);
@@ -140,5 +170,6 @@ export function iniciarEscucha(log) {
 		await cliente?.end().catch(() => {});
 		for (const raw of clientesPanel) raw.end();
 		for (const set of clientesSeguimiento.values()) for (const raw of set) raw.end();
+		for (const conexiones of clientesMesa.values()) for (const conexion of conexiones) conexion.raw.end();
 	};
 }

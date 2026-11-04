@@ -94,7 +94,7 @@ export default function Admin() {
 					<button onClick={salir} className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200">Salir</button>
 				</div>
 			</header>
-			{pestana === "barra" && <PanelPedidos alCaducar={salir} />}
+			{pestana === "barra" && <PanelPedidos alCaducar={salir} esAdmin={usuario.rol === "admin"} />}
 			{pestana === "cocina" && <PantallaCocina alCaducar={salir} />}
 			{pestana === "carta" && <GestionCarta esAdmin={usuario.rol === "admin"} />}
 			{pestana === "mesas" && <QrMesas esAdmin={usuario.rol === "admin"} />}

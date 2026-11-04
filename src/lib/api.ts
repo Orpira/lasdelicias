@@ -76,6 +76,7 @@ export function escuchar(
 				const token = auth ? leerToken() : null;
 				if (token) cabeceras.Authorization = `Bearer ${token}`;
 				const res = await fetch(`${API_URL}${ruta}`, { headers: cabeceras, signal: control.signal });
+				if (!activo) return;
 				if (res.status === 401) {
 					guardarToken(null);
 					alCambiarConexion?.(false);
@@ -88,7 +89,7 @@ export function escuchar(
 				let bufer = "";
 				for (;;) {
 					const { value, done } = await lector.read();
-					if (done) break;
+					if (done || !activo) break;
 					bufer += value;
 					let corte: number;
 					while ((corte = bufer.indexOf("\n\n")) !== -1) {
@@ -101,17 +102,22 @@ export function escuchar(
 							else if (linea.startsWith("data: ")) datos += linea.slice(6);
 						}
 						if (datos) {
+							let contenido: unknown;
 							try {
-								alRecibir(evento, JSON.parse(datos));
-							} catch {
-								/* bloque no válido: se ignora */
+								contenido = JSON.parse(datos);
+							} catch (error) {
+								console.warn("Se recibió un mensaje en directo con JSON no válido", error);
+								continue;
 							}
+							alRecibir(evento, contenido);
 						}
 					}
 				}
-			} catch {
+			} catch (error) {
 				if (!activo) return;
+				console.warn("Se interrumpió la conexión en directo; se intentará de nuevo", error);
 			}
+			if (!activo) return;
 			alCambiarConexion?.(false);
 			if (activo) await new Promise((r) => setTimeout(r, 3000));
 		}

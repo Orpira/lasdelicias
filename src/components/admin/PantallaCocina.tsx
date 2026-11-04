@@ -140,11 +140,11 @@ export default function PantallaCocina({ alCaducar }: { alCaducar: () => void })
 						const min = minutosDesde(pedido.created_at, ahora);
 						const todasHechas = lineas.every(({ i }) => hechos[`${pedido.id}:${i}`]);
 						return (
-							<article key={pedido.id} className="snap-start shrink-0 w-72 bg-white text-gray-900 rounded-xl flex flex-col overflow-hidden">
-								<header className={`${colorTiempo(min)} text-white px-3 py-2 flex items-center justify-between`}>
+							<article key={pedido.id} className="animacion-estado-pedido snap-start shrink-0 w-72 bg-white text-gray-900 rounded-xl flex flex-col overflow-hidden">
+								<header className={`${pedido.estado === "nuevo" ? "bg-red-600" : "bg-orange-700"} text-white px-3 py-2 flex items-center justify-between transition-colors duration-500`}>
 									<span className="text-sm font-bold opacity-90">{pos + 1}.º</span>
-									<span className="text-3xl font-black">#{pedido.numero_dia}</span>
-									<span className="text-lg font-bold tabular-nums">{min}′</span>
+									<span className="text-center"><span className="block text-xs font-bold">{pedido.estado === "nuevo" ? "Recibido" : "Preparando"}</span><span className="text-3xl font-black">#{pedido.numero_dia}</span></span>
+									<span className={`${colorTiempo(min)} rounded px-2 py-1 text-lg font-bold tabular-nums`} aria-label={`${min} minutos de espera`}>{min}′</span>
 								</header>
 								<div className="px-3 py-2 border-b text-lg font-bold">
 									{pedido.tipo === "mesa" && pedido.mesa_numero !== null && `🪑 ${etiquetaMesa(pedido.mesa_numero, pedido.mesa_nombre, { conNumero: true })}`}

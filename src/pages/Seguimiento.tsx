@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { BellRing, ChefHat, ClipboardCheck, Croissant } from "lucide-react";
 import { FormularioOpinion } from "../components/Opiniones";
+import GraciasPorLaVisita from "../components/GraciasPorLaVisita";
 import { api, escuchar, euros, hora } from "../lib/api";
 import type { EstadoPedido, Pedido } from "../types/producto";
 import { etiquetaMesa } from "../lib/mesa";
@@ -36,16 +37,28 @@ export default function Seguimiento() {
 	const [error, setError] = useState("");
 
 	useEffect(() => {
+		let vigente = true;
+		let recibido = false;
+		setPedido(null);
+		setError("");
+		setOpinada(true);
+		const actualizar = (datos: Pedido) => {
+			recibido = true;
+			setError("");
+			setPedido((anterior) => anterior?.codigo === datos.codigo && (anterior.pagado_at && !datos.pagado_at
+				|| Date.parse(anterior.updated_at) > Date.parse(datos.updated_at)) ? anterior : datos);
+		};
 		api<Pedido & { opinada: boolean }>(`/pedidos/${codigo}`)
 			.then(({ opinada: yaOpinada, ...p }) => {
-				setPedido(p);
+				if (!vigente) return;
+				actualizar(p);
 				setOpinada(yaOpinada);
 			})
-			.catch((e) => setError(e.message));
+			.catch((e) => { if (vigente && !recibido) setError(e.message); });
 		const cerrar = escuchar(`/pedidos/${codigo}/stream`, (evento, datos) => {
-			if (evento === "pedido") setPedido(datos as Pedido);
+			if (evento === "pedido" && vigente) actualizar(datos as Pedido);
 		});
-		return cerrar;
+		return () => { vigente = false; cerrar(); };
 	}, [codigo]);
 
 	// Aviso con vibración al pasar a "listo" (en móviles que lo permiten)
@@ -88,6 +101,11 @@ export default function Seguimiento() {
 				</ol>
 			)}
 
+			{pedido.pagado_at && <p className="mb-6 rounded-xl bg-green-50 p-3 text-center font-bold text-green-800" role="status">Pagado · ¡Gracias!</p>}
+			{pedido.estado === "entregado" && pedido.pagado_at && pedido.tipo !== "mesa" && pedido.metodo_pago ? (
+				<GraciasPorLaVisita pedidos={[pedido]} total={pedido.total} metodo={pedido.metodo_pago}
+					pedidoParaValorar={{ codigo: pedido.codigo, nombre_cliente: pedido.nombre_cliente, opinada }} />
+			) : <>
 			<ul className="bg-white rounded-2xl border border-delicias/15 divide-y">
 				{pedido.items.map((it, i) => (
 					<li key={i} className="flex justify-between p-3">
@@ -106,7 +124,7 @@ export default function Seguimiento() {
 				<section className="mt-8 p-6 rounded-2xl bg-merengue" aria-labelledby="titulo-valorar">
 					<h2 id="titulo-valorar" className="text-2xl font-extrabold tracking-titular mb-1">¿Qué tal todo?</h2>
 					<p className="text-tinta/70 mb-4">Tu opinión nos ayuda a mejorar y a que otros nos conozcan.</p>
-					<FormularioOpinion pedidoCodigo={pedido.codigo} nombreInicial={pedido.nombre_cliente} />
+					<FormularioOpinion key={pedido.codigo} pedidoCodigo={pedido.codigo} nombreInicial={pedido.nombre_cliente} />
 				</section>
 			)}
 
@@ -116,6 +134,7 @@ export default function Seguimiento() {
 			<div className="text-center mt-4">
 				<Link to="/menu" className="text-delicias font-semibold underline">Volver a la carta</Link>
 			</div>
+			</>}
 		</div>
 	);
 }

@@ -55,6 +55,26 @@ export const esquemaPedidoN8n = z.object({
 
 export const esquemaEstado = z.object({ estado: z.enum(ESTADOS) });
 
+export const esquemaIdCuenta = z.string({ error: "Cuenta no válida" }).refine(
+	(valor) => /^[1-9]\d{0,18}$/.test(valor) && BigInt(valor) <= 9223372036854775807n,
+	"Cuenta no válida",
+);
+export const esquemaIdPedido = z.uuid({ error: "Pedido no válido" });
+export const esquemaCobro = z.object({
+	metodo_pago: z.enum(["efectivo", "tarjeta", "bizum", "otro"], { error: "Elige un método de pago válido" }),
+	forzar: z.boolean({ error: "La confirmación de entrega debe ser verdadera o falsa" }).default(false),
+}, { error: "Indica los datos del cobro" });
+export const esquemaAnularCuenta = z.object({
+	motivo: z.string({ error: "Indica el motivo de la anulación" }).trim().min(1, "Indica el motivo de la anulación").max(300, "El motivo no puede superar los 300 caracteres"),
+}, { error: "Indica el motivo de la anulación" });
+export const esquemaListadoCuentas = z.object({
+	estado: z.enum(["abierta", "cobrada", "anulada"], { error: "Estado de cuenta no válido" }).default("abierta"),
+});
+export const esquemaInicioStreamMesa = z.object({
+	desde: z.iso.datetime({ offset: true, error: "La fecha de conexión no es válida" }).optional(),
+	cuenta: esquemaIdCuenta.optional(),
+});
+
 export const esquemaLogin = z.object({
 	email: z.email().transform((e) => e.toLowerCase()),
 	password: z.string().min(1).max(200),

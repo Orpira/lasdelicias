@@ -17,7 +17,8 @@ import {
 	esquemaProducto,
 	validar,
 } from "../esquemas.js";
-import { cambiarEstado, pedidosDelPanel } from "../pedidos-servicio.js";
+import { cambiarEstado, obtenerPedidoPorId, pedidosDelPanel } from "../pedidos-servicio.js";
+import { anularCuenta, cobrarCuenta, cobrarPedido, listarCuentas, obtenerCuenta, pendientesDeCobro } from "../cuentas.js";
 import { abrirSSE, suscribirPanel } from "../eventos.js";
 import { estadoTpv, sincronizarAhora } from "../tpv/index.js";
 
@@ -59,6 +60,20 @@ export default async function rutasStaff(app) {
 			const { estado } = validar(esquemaEstado, request.body);
 			return cambiarEstado(request.params.id, estado);
 		});
+
+		privado.get("/admin/cuentas", async (request) => listarCuentas(request.query.estado));
+		privado.get("/admin/cuentas/:id", async (request, reply) => {
+			const cuenta = await obtenerCuenta(request.params.id);
+			if (!cuenta) return reply.code(404).send({ error: "Cuenta no encontrada" });
+			return cuenta;
+		});
+		privado.post("/admin/cuentas/:id/cobrar", async (request) =>
+			cobrarCuenta(request.params.id, request.body, request.user));
+		privado.post("/admin/pedidos/:id/cobrar", async (request) => {
+			const id = await cobrarPedido(request.params.id, request.body);
+			return obtenerPedidoPorId(id);
+		});
+		privado.get("/admin/pendientes-cobro", async () => pendientesDeCobro());
 
 		privado.get("/admin/stream", async (request, reply) => {
 			const raw = abrirSSE(request, reply);
@@ -128,6 +143,9 @@ export default async function rutasStaff(app) {
 		// --- Gestión de la carta: solo administradores ---
 		privado.register(async (admin) => {
 			admin.addHook("onRequest", admin.soloAdmin);
+
+			admin.post("/admin/cuentas/:id/anular", async (request) =>
+				anularCuenta(request.params.id, request.body, request.user));
 
 			// Estado de la conexión con la caja y sincronización manual
 			admin.get("/admin/tpv", async () => estadoTpv());

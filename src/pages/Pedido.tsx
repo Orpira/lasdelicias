@@ -7,18 +7,9 @@ import { ShoppingBag } from "lucide-react";
 import { ErrorApi } from "../lib/api";
 import { idDispositivo } from "../lib/dispositivo";
 import { etiquetaMesa } from "../lib/mesa";
+import { recordarPedido } from "../lib/cuentas";
 
-const CLAVE_MIS_PEDIDOS = "delicias.misPedidos";
 const CLAVE_CLIENTE = "delicias.cliente";
-
-function recordarPedido(codigo: string) {
-	try {
-		const previos: string[] = JSON.parse(localStorage.getItem(CLAVE_MIS_PEDIDOS) ?? "[]");
-		localStorage.setItem(CLAVE_MIS_PEDIDOS, JSON.stringify([codigo, ...previos.filter((c) => c !== codigo)].slice(0, 10)));
-	} catch {
-		/* ignorar */
-	}
-}
 
 function leerDatosCliente(): { nombre: string; telefono: string } | null {
 	try {
@@ -104,6 +95,12 @@ export default function Pedido() {
 				console.warn("El pedido se ha enviado, pero no se pudieron actualizar los datos recordados del cliente", error);
 			}
 			recordarPedido(pedido.codigo);
+			carrito.registrarPedido(pedido);
+			if (pedido.tipo === "mesa" && pedido.mesa_numero !== null && carrito.mesaToken && carrito.mesaDesde !== null) {
+				carrito.confirmarMesaDelPedido({
+					numero: pedido.mesa_numero, nombre: pedido.mesa_nombre ?? null, token: carrito.mesaToken, desde: carrito.mesaDesde,
+				});
+			}
 			carrito.vaciar();
 			navigate(`/pedido/${pedido.codigo}`, { replace: true });
 		} catch (err) {
@@ -211,7 +208,7 @@ export default function Pedido() {
 					className="py-4 rounded-xl bg-delicias text-white text-lg font-bold hover:bg-delicias-oscuro disabled:opacity-60 transition">
 					{enviando ? "Enviando…" : `Enviar pedido · ${euros(carrito.total)}`}
 				</button>
-				<p className="text-xs text-center text-gray-500">Pagas en el local al recoger o en la mesa.</p>
+				<p className="text-xs text-center text-gray-500">Pagas en la caja del local. La web no procesa pagos.</p>
 			</form>
 		</div>
 	);
