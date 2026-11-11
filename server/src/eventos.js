@@ -48,15 +48,21 @@ export function suscribirSeguimiento(codigo, raw) {
 	});
 }
 
-export function suscribirMesa(numero, token, raw) {
+export function suscribirMesa(numero, token, raw, { diferir = false } = {}) {
 	if (!clientesMesa.has(numero)) clientesMesa.set(numero, new Set());
 	const conexiones = clientesMesa.get(numero);
-	const conexion = { token, raw };
+	const conexion = { token, raw, pendientes: diferir ? [] : null };
 	conexiones.add(conexion);
+	const activar = () => {
+		if (conexion.pendientes === null) return;
+		for (const evento of conexion.pendientes) enviarSSE(raw, "cuenta", evento);
+		conexion.pendientes = null;
+	};
 	raw.on("close", () => {
 		conexiones.delete(conexion);
 		if (!conexiones.size) clientesMesa.delete(numero);
 	});
+	return activar;
 }
 
 let avisadoSinSecreto = false;
@@ -105,7 +111,10 @@ async function procesar(aviso, log) {
 		const evento = { ...cuenta, tipo: aviso.tipo };
 		for (const raw of clientesPanel) enviarSSE(raw, "cuenta", evento);
 		for (const conexion of clientesMesa.get(cuenta.mesa_numero) ?? []) {
-			if (mesa.activa && conexion.token === mesa.token) enviarSSE(conexion.raw, "cuenta", evento);
+			if (mesa.activa && conexion.token === mesa.token) {
+				if (conexion.pendientes) conexion.pendientes.push(evento);
+				else enviarSSE(conexion.raw, "cuenta", evento);
+			}
 			else conexion.raw.end();
 		}
 		await enviarAN8n({ ...evento, motivo_anulacion: mesa.motivo_anulacion }, log);
