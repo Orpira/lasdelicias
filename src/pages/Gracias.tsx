@@ -22,11 +22,11 @@ export default function Gracias() {
 		let vigente = true;
 		setCuenta(null);
 		setError("");
-		api<CuentaDetalle>(`/cuentas/${encodeURIComponent(cuentaId)}/resumen`)
+		api<CuentaDetalle>(`/cuentas/${encodeURIComponent(cuentaId)}/resumen`, { cabeceras: { "X-Pedido-Codigo": codigos.split(",")[0] ?? "" } })
 			.then((datos) => { if (vigente) setCuenta(datos); })
 			.catch((fallo) => { if (vigente) setError(fallo.message); });
 		return () => { vigente = false; };
-	}, [cuentaId]);
+	}, [cuentaId, codigos]);
 
 	useEffect(() => {
 		let vigente = true;
