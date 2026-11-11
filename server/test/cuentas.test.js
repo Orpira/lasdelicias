@@ -113,9 +113,9 @@ describe("Cuentas y registro del cobro", {
 	});
 	const errorConEstado = (estado) => (error) => error.statusCode === estado;
 
-	it("La migración incorpora solo los pedidos de mesa en curso", () => {
+	it("La migración final asigna cuenta a todos los pedidos de mesa, incluidos los históricos", () => {
 		assert.ok(legado.find((pedido) => pedido.codigo === "legado0001").cuenta_id);
-		assert.equal(legado.find((pedido) => pedido.codigo === "legado0002").cuenta_id, null);
+		assert.ok(legado.find((pedido) => pedido.codigo === "legado0002").cuenta_id);
 	});
 
 	it("Dos pedidos simultáneos de una mesa comparten una única cuenta", async () => {
