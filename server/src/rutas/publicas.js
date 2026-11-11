@@ -70,6 +70,16 @@ export default async function rutasPublicas(app) {
 	});
 
 	app.get("/cuentas/:id/resumen", async (request, reply) => {
+		reply.header("Cache-Control", "no-store");
+		const codigo = request.headers["x-pedido-codigo"];
+		if (typeof codigo !== "string" || !/^[a-zA-Z0-9_-]{8,64}$/.test(codigo)) {
+			return reply.code(404).send({ error: "Este resumen no está disponible o ha caducado" });
+		}
+		const { rows: [autorizado] } = await query(
+			"SELECT 1 FROM pedidos WHERE cuenta_id = $1 AND codigo = $2 LIMIT 1",
+			[request.params.id, codigo],
+		);
+		if (!autorizado) return reply.code(404).send({ error: "Este resumen no está disponible o ha caducado" });
 		const cuenta = await obtenerCuenta(request.params.id, { soloCobradaReciente: true });
 		if (!cuenta) return reply.code(404).send({ error: "Este resumen no está disponible o ha caducado" });
 		reply.header("Cache-Control", "no-store");
