@@ -6,6 +6,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { crearAutenticadorStaff } from "./auth-staff.js";
 import { migrar } from "./migrate.js";
 import { iniciarEscucha } from "./eventos.js";
 import { iniciarSincronizacionTpv } from "./tpv/index.js";
@@ -41,20 +42,7 @@ await app.register(rateLimit, { global: false });
 await app.register(jwt, { secret: config.jwtSecret });
 await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
 
-app.decorate("autenticar", async (request, reply) => {
-	try {
-		await request.jwtVerify();
-	} catch {
-		return reply.code(401).send({ error: "Sesión caducada o no válida" });
-	}
-	// Verificar el estado y rol actual del empleado en cada petición.
-	const { rows: [empleado] } = await pool.query(
-		"SELECT id, nombre, rol FROM staff WHERE id = $1 AND activo = true",
-		[request.user.sub],
-	);
-	if (!empleado) return reply.code(401).send({ error: "Sesión revocada o usuario desactivado" });
-	request.user = { ...request.user, nombre: empleado.nombre, rol: empleado.rol };
-});
+app.decorate("autenticar", crearAutenticadorStaff(pool));
 app.decorate("soloAdmin", async (request, reply) => {
 	if (request.user?.rol !== "admin") {
 		return reply.code(403).send({ error: "Solo un administrador puede hacer esto" });
