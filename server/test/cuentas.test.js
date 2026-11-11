@@ -264,20 +264,23 @@ describe("Cuentas y registro del cobro", {
 	it("Los resúmenes públicos no muestran datos personales y caducan a las 24 horas", async () => {
 		const pedido = await pedir();
 		const ruta = `/cuentas/${pedido.cuenta_id}/resumen`;
-		assert.equal((await app.inject(ruta)).statusCode, 404);
+		const autorizada = () => app.inject({ url: ruta, headers: { "x-pedido-codigo": pedido.codigo } });
+		assert.equal((await autorizada()).statusCode, 404);
 		const abierta = (await app.inject(`/mesas/qr/${tokens.get(101)}/cuenta`)).json();
 		for (const campo of ["nombre_cliente", "telefono", "dispositivo", "codigo", "cerrada_por"]) {
 			assert.equal(JSON.stringify(abierta).includes(`"${campo}"`), false);
 		}
 		await cuentas.cobrarCuenta(pedido.cuenta_id, { metodo_pago: "otro", forzar: true }, administrador);
-		const respuesta = await app.inject(ruta);
+		assert.equal((await app.inject(ruta)).statusCode, 404, "sin código no debe revelarse la cuenta");
+		assert.equal((await app.inject({ url: ruta, headers: { "x-pedido-codigo": "codigo-incorrecto" } })).statusCode, 404);
+		const respuesta = await autorizada();
 		assert.equal(respuesta.statusCode, 200);
 		assert.equal(respuesta.headers["cache-control"], "no-store");
 		assert.equal(respuesta.json().total, 3.25);
 		await pool.query("UPDATE cuentas SET cerrada_at = now() - interval '25 hours' WHERE id = $1", [pedido.cuenta_id]);
-		assert.equal((await app.inject(ruta)).statusCode, 404);
+		assert.equal((await autorizada()).statusCode, 404);
 		await pool.query("UPDATE cuentas SET cerrada_at = now() + interval '1 hour' WHERE id = $1", [pedido.cuenta_id]);
-		assert.equal((await app.inject(ruta)).statusCode, 404);
+		assert.equal((await autorizada()).statusCode, 404);
 	});
 
 	it("Los pendientes incluyen entregados sin pagar y cuentas de días anteriores", async () => {
