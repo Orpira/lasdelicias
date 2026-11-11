@@ -149,8 +149,11 @@ export default async function rutasPublicas(app) {
 		},
 	);
 
-	app.get("/pedidos/:codigo", async (request, reply) => {
-		const pedido = await obtenerPedidoPorCodigo(String(request.params.codigo));
+	app.get("/pedidos/:codigo", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request, reply) => {
+		reply.header("Cache-Control", "no-store");
+		const codigo = String(request.params.codigo);
+		if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{10}$/.test(codigo)) return reply.code(404).send({ error: "Pedido no encontrado" });
+		const pedido = await obtenerPedidoPorCodigo(codigo);
 		if (!pedido) return reply.code(404).send({ error: "Pedido no encontrado" });
 		const { rows } = await query("SELECT 1 FROM opiniones WHERE pedido_codigo = $1", [pedido.codigo]);
 		return { ...vistaPublica(pedido), opinada: rows.length > 0 };
@@ -206,8 +209,10 @@ export default async function rutasPublicas(app) {
 	);
 
 	// Seguimiento en tiempo real para el cliente
-	app.get("/pedidos/:codigo/stream", async (request, reply) => {
-		const pedido = await obtenerPedidoPorCodigo(String(request.params.codigo));
+	app.get("/pedidos/:codigo/stream", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request, reply) => {
+		const codigo = String(request.params.codigo);
+		if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{10}$/.test(codigo)) return reply.code(404).send({ error: "Pedido no encontrado" });
+		const pedido = await obtenerPedidoPorCodigo(codigo);
 		if (!pedido) return reply.code(404).send({ error: "Pedido no encontrado" });
 		const raw = abrirSSE(request, reply);
 		raw.write(`event: pedido\ndata: ${JSON.stringify(vistaPublica(pedido))}\n\n`);
