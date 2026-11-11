@@ -27,6 +27,7 @@ describe("Tokens de mesa e idempotencia de pedidos", {
 		process.env.DATABASE_URL = url.toString();
 		process.env.JWT_SECRET = "clave-exclusiva-de-pruebas-no-usar-en-produccion";
 		process.env.N8N_API_KEY = randomUUID();
+		process.env.N8N_FINANCE_API_KEY = randomUUID();
 		process.env.N8N_WEBHOOK_URL = "";
 		process.env.TPV_PROVEEDOR = "ninguno";
 		({ pool } = await import("../src/db.js"));
@@ -126,6 +127,16 @@ describe("Tokens de mesa e idempotencia de pedidos", {
 		assert.equal((await pedir("con espacios no permitidos 1234")).statusCode, 400);
 		assert.equal((await pedir()).statusCode, 201, "sin clave se sigue aceptando");
 		assert.equal(await contar(), 2);
+	});
+
+	it("n8n separa la clave financiera de la clave operativa", async () => {
+		const ruta = "/n8n/cierres/2026-11-11";
+		const operativa = await app.inject({ url: ruta, headers: { "x-api-key": process.env.N8N_API_KEY } });
+		assert.equal(operativa.statusCode, 401);
+		const financiera = await app.inject({ url: ruta, headers: { "x-api-key": process.env.N8N_FINANCE_API_KEY } });
+		assert.notEqual(financiera.statusCode, 401, "la clave financiera debe superar la autenticación");
+		const pedidoConClaveFinanciera = await app.inject({ method: "POST", url: "/n8n/pedidos", headers: { "x-api-key": process.env.N8N_FINANCE_API_KEY }, payload: cuerpo() });
+		assert.equal(pedidoConClaveFinanciera.statusCode, 401);
 	});
 
 	it("n8n también puede reintentar sin duplicar pedidos de WhatsApp", async () => {
