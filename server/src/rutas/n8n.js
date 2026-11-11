@@ -7,16 +7,18 @@ import { consultarCierre, guardarCierre } from "../cierres.js";
 import { aplicarStockExterno } from "../tpv/index.js";
 import { cambiarEstado, crearPedidoIdempotente, obtenerPedidoPorCodigo } from "../pedidos-servicio.js";
 
-function claveValida(recibida) {
-	if (!config.n8nApiKey || typeof recibida !== "string") return false;
+function coincideClave(recibida, esperada) {
+	if (!esperada || typeof recibida !== "string") return false;
 	const a = Buffer.from(recibida);
-	const b = Buffer.from(config.n8nApiKey);
+	const b = Buffer.from(esperada);
 	return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export default async function rutasN8n(app) {
 	app.addHook("onRequest", async (request, reply) => {
-		if (!claveValida(request.headers["x-api-key"])) {
+		const rutaFinanciera = request.url.split("?")[0].startsWith("/n8n/cierres");
+		const claveEsperada = rutaFinanciera && config.n8nFinanceApiKey ? config.n8nFinanceApiKey : config.n8nApiKey;
+		if (!coincideClave(request.headers["x-api-key"], claveEsperada)) {
 			return reply.code(401).send({ error: "Clave de API no válida" });
 		}
 	});
