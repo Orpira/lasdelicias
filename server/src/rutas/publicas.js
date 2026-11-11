@@ -90,7 +90,7 @@ export default async function rutasPublicas(app) {
 		const mesa = await mesaDelQr(request.params.token);
 		const { desde, cuenta: cuentaPropia } = validar(esquemaInicioStreamMesa, request.query);
 		const raw = abrirSSE(request, reply);
-		suscribirMesa(mesa.numero, request.params.token, raw);
+		const activarEventos = suscribirMesa(mesa.numero, request.params.token, raw, { diferir: true });
 		try {
 			if (desde) {
 				const { rows: cierres } = await query(
@@ -108,6 +108,7 @@ export default async function rutasPublicas(app) {
 			}
 			const cuenta = await cuentaAbiertaDeMesa(mesa.numero);
 			if (cuenta) raw.write(`event: cuenta\ndata: ${JSON.stringify({ ...cuenta, tipo: "cuenta.actualizada" })}\n\n`);
+			activarEventos();
 		} catch (error) {
 			request.log.error(error, "No se pudo enviar el estado inicial de la cuenta");
 			raw.end();
