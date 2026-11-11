@@ -44,17 +44,16 @@ await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024, files: 1 } 
 app.decorate("autenticar", async (request, reply) => {
 	try {
 		await request.jwtVerify();
-		// El JWT identifica al usuario, pero no autoriza con un rol obsoleto.
-		const { rows: [empleado] } = await pool.query(
-			"SELECT id, nombre, rol FROM staff WHERE id = $1 AND activo = true",
-			[request.user.sub],
-		);
-		if (!empleado) return reply.code(401).send({ error: "Sesión revocada o usuario desactivado" });
-		request.user = { ...request.user, nombre: empleado.nombre, rol: empleado.rol };
-	} catch (error) {
-		if (error.code && !String(error.code).startsWith("FST_JWT")) throw error;
+	} catch {
 		return reply.code(401).send({ error: "Sesión caducada o no válida" });
 	}
+	// Verificar el estado y rol actual del empleado en cada petición.
+	const { rows: [empleado] } = await pool.query(
+		"SELECT id, nombre, rol FROM staff WHERE id = $1 AND activo = true",
+		[request.user.sub],
+	);
+	if (!empleado) return reply.code(401).send({ error: "Sesión revocada o usuario desactivado" });
+	request.user = { ...request.user, nombre: empleado.nombre, rol: empleado.rol };
 });
 app.decorate("soloAdmin", async (request, reply) => {
 	if (request.user?.rol !== "admin") {
