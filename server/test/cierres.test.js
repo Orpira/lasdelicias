@@ -67,11 +67,11 @@ describe("Cierre diario con criterio de venta", {
 		authorization: `Bearer ${app.jwt.sign({ sub: usuario.id, rol: usuario.rol })}`,
 	});
 
-	async function pedido(estado, { pagado = false, metodo = null, tipo = "recoger", total = 3.25 } = {}) {
+	async function pedido(estado, { pagado = false, metodo = null, tipo = "recoger", total = 3.25, fechaPedido = fecha } = {}) {
 		const { rows: [nuevo] } = await pool.query(
 			`INSERT INTO pedidos (codigo, fecha, numero_dia, nombre_cliente, tipo, mesa_numero, estado, total, pagado_at, metodo_pago)
 			 VALUES ($1, $2::date, $3, 'Cliente', $4, $5, $6, $7, ${pagado ? "now()" : "NULL"}, $8) RETURNING *`,
-			[randomUUID().replaceAll("-", "").slice(0, 10), fecha, ++numero, tipo, tipo === "mesa" ? 1 : null, estado, total, metodo],
+			[randomUUID().replaceAll("-", "").slice(0, 10), fechaPedido, ++numero, tipo, tipo === "mesa" ? 1 : null, estado, total, metodo],
 		);
 		await pool.query(
 			"INSERT INTO pedido_items (pedido_id, producto_id, nombre, precio_unitario, cantidad) VALUES ($1, $2, $3, $4, 1)",
@@ -127,9 +127,9 @@ describe("Cierre diario con criterio de venta", {
 	});
 
 	it("bloquea el cierre de hoy por pedidos no cobrados", async () => {
-		await pedido("listo");
-		await pool.query("UPDATE negocio SET datos = datos || '{\"cierre_incluye_listos\":true}'::jsonb WHERE id = 1");
 		const hoy = (await pool.query("SELECT (now() AT TIME ZONE 'Europe/Madrid')::date::text AS fecha")).rows[0].fecha;
+		await pedido("listo", { fechaPedido: hoy });
+		await pool.query("UPDATE negocio SET datos = datos || '{\"cierre_incluye_listos\":true}'::jsonb WHERE id = 1");
 		const cierre = await app.inject({ method: "POST", url: "/admin/cierres", headers: sesion(), payload: { fecha: hoy } });
 		assert.equal(cierre.statusCode, 409);
 	});
