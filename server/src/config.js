@@ -43,6 +43,8 @@ export const config = {
 	n8nWebhookSecret: process.env.N8N_WEBHOOK_SECRET ?? "",
 	// Clave con la que n8n llama a la API (pedidos por WhatsApp, cambios de estado)
 	n8nApiKey: process.env.N8N_API_KEY ?? "",
+	// Opcional: clave independiente para consultar/guardar cierres financieros.
+	n8nFinanceApiKey: process.env.N8N_FINANCE_API_KEY ?? "",
 	zonaHoraria: "Europe/Madrid",
 	// Integración con la caja (TPV). "ninguno" = sin conexión (stock gestionado en la app o vía n8n)
 	tpv: {
