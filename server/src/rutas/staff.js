@@ -203,6 +203,9 @@ export default async function rutasStaff(app) {
 
 			admin.put("/admin/staff/:id", async (request, reply) => {
 				const datos = validar(esquemaStaffCambio, request.body);
+				if (request.params.id === String(request.user.sub) && (!datos.activo || datos.rol !== "admin")) {
+					return reply.code(400).send({ error: "No puedes desactivar ni retirar tu propio rol de administrador" });
+				}
 				const parametros = [request.params.id, datos.email, datos.nombre, datos.rol, datos.activo];
 				const passwordSql = datos.password ? ", password_hash = $6" : "";
 				if (datos.password) parametros.push(await bcrypt.hash(datos.password, 12));
