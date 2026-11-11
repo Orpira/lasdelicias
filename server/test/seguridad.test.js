@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import pg from "pg";
 import Fastify from "fastify";
 import jwt from "@fastify/jwt";
+import rateLimit from "@fastify/rate-limit";
 
 const urlPruebas = process.env.DATABASE_URL_TEST;
 const dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
@@ -37,6 +38,7 @@ describe("Tokens de mesa e idempotencia de pedidos", {
 		await pool.query("UPDATE negocio SET datos = datos || jsonb_build_object('horario', $1::jsonb, 'dias_cerrado', '[]'::jsonb) WHERE id = 1", [horario]);
 		app = Fastify();
 		await app.register(jwt, { secret: process.env.JWT_SECRET });
+		await app.register(rateLimit, { global: false });
 		app.decorate("autenticar", async (request) => request.jwtVerify());
 		app.decorate("soloAdmin", async () => {});
 		app.setErrorHandler((error, request, reply) => reply.code(error.statusCode ?? 500).send({ error: error.message }));
@@ -77,6 +79,23 @@ describe("Tokens de mesa e idempotencia de pedidos", {
 		assert.equal((await app.inject({ url: `/mesas/qr/${mesa.token}` })).statusCode, 200);
 		assert.equal((await app.inject({ url: `/mesas/qr/${mesa.token.slice(0, 16)}` })).statusCode, 404);
 		await assert.rejects(pool.query("UPDATE mesas SET token = 'abcdef0123456789' WHERE numero = 1"), /mesas_token_formato/);
+	});
+
+	it("El seguimiento valida códigos, limita consultas y evita cachear respuestas", async () => {
+		const creado = await pedir(randomUUID());
+		assert.equal(creado.statusCode, 201);
+		const codigo = creado.json().codigo;
+		const valido = await app.inject({ url: `/pedidos/${codigo}` });
+		assert.equal(valido.statusCode, 200);
+		assert.equal(valido.headers["cache-control"], "no-store");
+		assert.equal((await app.inject({ url: "/pedidos/codigo-invalido" })).statusCode, 404);
+		assert.equal((await app.inject({ url: "/pedidos/codigo-invalido/stream" })).statusCode, 404);
+		let bloqueado = false;
+		for (let i = 0; i < 65; i++) {
+			const respuesta = await app.inject({ url: `/pedidos/${codigo}` });
+			if (respuesta.statusCode === 429) { bloqueado = true; break; }
+		}
+		assert.equal(bloqueado, true, "debe limitar consultas repetidas");
 	});
 
 	it("Un reintento con la misma Idempotency-Key devuelve el pedido original sin duplicarlo", async () => {
